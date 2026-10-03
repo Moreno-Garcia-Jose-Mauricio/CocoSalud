@@ -133,6 +133,7 @@ input[type=time]{flex:0 0 110px}
 .pct small{display:block;font-size:.75rem;font-weight:500;color:var(--muted)}
 
 .foot{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:20px}
+.ver{text-align:center;color:var(--muted);font-size:.78rem;margin:12px 0 0}
 dialog{border:1px solid var(--line);border-radius:20px;background:var(--surface);color:var(--ink);padding:20px;width:min(460px,calc(100% - 24px));max-height:calc(100% - 24px)}
 dialog::backdrop{background:rgb(0 0 0 / .45)}
 dialog form{display:grid;gap:12px}
@@ -247,6 +248,7 @@ dialog legend{font-weight:700;padding:0 6px}
     <button class="btn ghost small" id="btnRestore">Restaurar respaldo</button>
     <input type="file" id="fileRestore" accept="application/json,.json" hidden>
   </div>
+  <p class="ver" id="ver"></p>
 </main>
 
 <dialog id="cfg">
@@ -299,6 +301,8 @@ dialog legend{font-weight:700;padding:0 6px}
 
 <script>
 /* ===== Datos ===== */
+/* Sube APP_VERSION en cada cambio que publiques */
+var APP_VERSION='1.0', APP_DATE='2026-10-03';
 var KEY='mc1', CKEY='mccfg', API='https://api.github.com/gists/';
 var DEF_GIST='38d1ca0797bbf0eca2ea9cd981786b60'; /* Gist de CocoSalud */
 var DEF_MEDS=[
@@ -603,6 +607,7 @@ document.addEventListener('visibilitychange',function(){if(!document.hidden){if(
 if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',function(){renderCharts();renderMeds();renderLabs();});
 
 $('glucT').value=nowHM();
+$('ver').textContent='CocoSalud versión '+APP_VERSION+', publicada el '+new Date(APP_DATE+'T12:00:00').toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'});
 setupFromLink();buildLabs();render();cloudLoad();
 </script>
 </body>
