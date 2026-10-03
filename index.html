@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#E9EFEC" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141A19" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Mi control">
+<title>Mi control</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💊</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#E9EFEC;--surface:#FFFFFF;--ink:#1D2B2A;--muted:#5F6F6C;--line:#D3DDD9;--field:#F3F6F5;
+  --peso:#2F6690;--imc:#86AECB;--gluc:#8A3F8F;--m1:#2E8A5C;--m2:#B97F0C;--m3:#B4507A;--m4:#5E7A24;--a1c:#A65A2E;--crea:#2B7A78;--bad:#B4372F;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#141A19;--surface:#1D2524;--ink:#E6EEEB;--muted:#97A6A3;--line:#2F3B39;--field:#172020;
+  --peso:#72A6CF;--imc:#3E6886;--gluc:#C98BD2;--m1:#5DC08D;--m2:#E2B04A;--m3:#E68BB0;--m4:#A9C25E;--a1c:#E09A6E;--crea:#5FC2BE;--bad:#E8746B;
+}}
+*,*::before,*::after{box-sizing:inherit}
+html{-webkit-text-size-adjust:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Manrope,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-variant-numeric:tabular-nums}
+main{max-width:1120px;margin:0 auto;padding:16px 16px 32px}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--peso);outline-offset:2px}
+
+.top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:4px 0 18px}
+.top h1{flex:1 1 auto;margin:0;font-size:1.75rem;font-weight:800;letter-spacing:-.03em;line-height:1.1}
+.datebox{display:flex;align-items:center;gap:6px}
+.cloud{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 12px;font-size:.85rem;cursor:pointer}
+.cloud i{width:9px;height:9px;border-radius:50%;background:var(--muted)}
+
+.layout{display:grid;gap:16px}
+@media (min-width:920px){.layout{grid-template-columns:370px 1fr;align-items:start}.side{position:sticky;top:calc(16px + env(safe-area-inset-top,0px))}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:18px}
+.side{display:grid;gap:16px}
+h2{margin:0 0 12px;font-size:1.05rem;font-weight:700;letter-spacing:-.01em}
+h3{margin:0 0 10px;font-size:.95rem;font-weight:700}
+.hint{color:var(--muted);font-size:.85rem;margin:0}
+
+.caps{display:grid;gap:10px;margin-bottom:18px}
+.cap{--c:var(--m1);display:flex;align-items:stretch;width:100%;min-height:58px;padding:0;border:2px solid var(--c);border-radius:999px;background:transparent;overflow:hidden;cursor:pointer;text-align:left;transition:background-color .2s}
+.cap .half{flex:0 0 60px;display:grid;place-items:center;border-right:2px solid var(--c);transition:background-color .25s}
+.cap .half svg{width:22px;height:22px;stroke:var(--c);fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;opacity:.35}
+.cap .txt{flex:1;display:flex;flex-direction:column;justify-content:center;padding:6px 18px 6px 14px;min-width:0}
+.cap .name{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cap .st{font-size:.84rem;color:var(--muted)}
+.cap[aria-pressed="true"]{background:color-mix(in srgb,var(--c) 13%,transparent)}
+.cap[aria-pressed="true"] .half{background:var(--c)}
+.cap[aria-pressed="true"] .half svg{stroke:var(--surface);opacity:1}
+.cap:active{transform:scale(.99)}
+
+.entry{display:grid;gap:14px}
+.field label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:5px}
+.row{display:flex;gap:8px}
+.row>*{min-width:0}
+.row>input,.row>select{flex:1 1 0}
+.row>.btn{flex:0 0 auto;min-width:max-content;line-height:1.25}
+@media (max-width:380px){.row>.btn{padding:10px 12px}}
+input,select{font-size:16px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--field);width:100%}
+input[type=date]{width:auto}
+input[type=time]{flex:0 0 110px}
+.btn{border:0;border-radius:12px;padding:10px 16px;font-weight:700;cursor:pointer;background:var(--ink);color:var(--surface);white-space:nowrap}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.small{padding:6px 10px;font-size:.82rem;font-weight:600}
+.link{background:none;border:0;padding:0;color:var(--peso);font-weight:700;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+
+.list{list-style:none;margin:0;padding:0}
+.list li{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
+.list li:first-child{border-top:0}
+.list .what{flex:1;display:flex;flex-direction:column;line-height:1.3}
+.list .what small{color:var(--muted)}
+.list .val{font-weight:700}
+.list .val.out{color:var(--bad)}
+.del{background:none;border:0;color:var(--muted);cursor:pointer;font-size:.82rem;padding:6px}
+
+.main{display:grid;gap:16px;min-width:0}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (min-width:640px){.stats{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 14px 12px;border-top:4px solid var(--c)}
+.stat .k{font-size:.84rem;color:var(--muted)}
+.stat .v{font-size:1.75rem;font-weight:800;letter-spacing:-.02em;line-height:1.2}
+.stat .v small{font-size:.85rem;font-weight:600;color:var(--muted);margin-left:3px}
+.stat .s{font-size:.82rem;color:var(--muted)}
+.stat .s.out{color:var(--bad);font-weight:600}
+
+.ranges{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.ranges span{color:var(--muted);font-size:.85rem;margin-right:4px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 14px;font-weight:600;font-size:.85rem;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.chart{position:relative;height:250px}
+.empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:var(--muted);font-size:.9rem;padding:20px}
+.empty[hidden]{display:none}
+.chart.sm{height:200px;margin:14px 0 6px}
+.labform{display:grid;gap:12px;padding:14px;border-radius:14px;background:var(--field);border:1px solid var(--line);margin-bottom:6px}
+.labform .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.labform input{background:var(--surface)}
+.labform .btn{justify-self:start}
+@media (max-width:480px){.labform .btn{justify-self:stretch}}
+.lab{--c:var(--muted)}
+.lab+.lab{border-top:1px solid var(--line);margin-top:20px;padding-top:20px}
+.lab h4{margin:0 0 6px;font-size:.95rem;font-weight:700}
+.labv{font-size:1.75rem;font-weight:800;letter-spacing:-.02em;line-height:1.2;color:var(--c)}
+.labv small{font-size:.85rem;font-weight:600;color:var(--muted);margin-left:3px}
+.labs{font-size:.82rem;color:var(--muted);max-width:60ch}
+.labs.out{color:var(--bad);font-weight:600}
+
+.mrow{display:grid;grid-template-columns:minmax(0,130px) 1fr auto;gap:12px;align-items:center;padding:8px 0}
+.mrow+.mrow{border-top:1px solid var(--line)}
+.mrow .ml{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dots{display:flex;flex-wrap:wrap;gap:4px}
+.dot{width:13px;height:13px;border-radius:50%;border:1.5px solid var(--c);opacity:.55}
+.dot.on{background:var(--c);opacity:1}
+.dot.half{background:linear-gradient(90deg,var(--c) 50%,transparent 50%);opacity:1}
+.pct.prn{color:var(--muted)}
+.medrow{display:grid;gap:8px;padding:10px 0;border-top:1px solid var(--line)}
+.medrow:first-child{border-top:0;padding-top:0}
+.medfoot{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.chk{display:flex;gap:8px;align-items:center;font-size:.85rem;color:var(--muted);cursor:pointer}
+.chk input{width:auto;margin:0;accent-color:var(--ink)}
+.dot.na{border-style:dotted;opacity:.25}
+.dot.today{outline:2px solid var(--ink);outline-offset:1px}
+.pct{font-weight:800;font-size:1.1rem;text-align:right}
+.pct small{display:block;font-size:.75rem;font-weight:500;color:var(--muted)}
+
+.foot{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:20px}
+dialog{border:1px solid var(--line);border-radius:20px;background:var(--surface);color:var(--ink);padding:20px;width:min(460px,calc(100% - 24px));max-height:calc(100% - 24px)}
+dialog::backdrop{background:rgb(0 0 0 / .45)}
+dialog form{display:grid;gap:12px}
+dialog fieldset{border:1px solid var(--line);border-radius:14px;padding:12px;margin:0;display:grid;gap:10px}
+dialog legend{font-weight:700;padding:0 6px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.actions{display:flex;justify-content:flex-end;gap:8px}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translate(-50%,30px);opacity:0;background:var(--ink);color:var(--surface);padding:10px 18px;border-radius:999px;font-weight:600;font-size:.9rem;transition:opacity .2s,transform .2s;pointer-events:none;max-width:calc(100% - 32px);text-align:center}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+  <header class="top">
+    <h1>Mi control</h1>
+    <div class="datebox">
+      <input type="date" id="fecha" aria-label="Día que estás registrando">
+      <button class="btn ghost small" id="btnHoy" hidden>Hoy</button>
+    </div>
+    <button class="cloud" id="cloud" title="Sincronizar ahora"><i></i><span>Sin nube</span></button>
+  </header>
+
+  <div class="layout">
+    <div class="side">
+      <section class="panel">
+        <h2 id="dayTitle">Hoy</h2>
+        <div class="caps" id="caps"></div>
+        <div class="entry">
+          <div class="field">
+            <label for="peso">Peso (kg)</label>
+            <div class="row">
+              <input id="peso" type="text" inputmode="decimal" placeholder="Ej. 78.4" autocomplete="off">
+              <button class="btn" id="btnPeso">Guardar peso</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="gluc">Glucosa (mg/dL)</label>
+            <div class="row">
+              <input id="gluc" type="text" inputmode="numeric" placeholder="Ej. 96" autocomplete="off">
+              <input id="glucT" type="time" aria-label="Hora de la medición">
+            </div>
+            <div class="row" style="margin-top:8px">
+              <select id="glucM" aria-label="Momento de la medición">
+                <option>Ayunas</option>
+                <option>Antes de comer</option>
+                <option>2 h después de comer</option>
+                <option>Antes de dormir</option>
+                <option>Otro</option>
+              </select>
+              <button class="btn" id="btnGluc">Guardar glucosa</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Registros del día</h2>
+        <ul class="list" id="dayList"></ul>
+      </section>
+    </div>
+
+    <div class="main">
+      <div class="stats">
+        <div class="stat" style="--c:var(--peso)"><div class="k">Peso</div><div class="v" id="sPeso">–</div><div class="s" id="sPesoD"></div></div>
+        <div class="stat" style="--c:var(--imc)"><div class="k">IMC</div><div class="v" id="sImc">–</div><div class="s" id="sImcC"></div></div>
+        <div class="stat" style="--c:var(--gluc)"><div class="k">Última glucosa</div><div class="v" id="sGl">–</div><div class="s" id="sGlM"></div></div>
+        <div class="stat" style="--c:var(--gluc)"><div class="k">Promedio de glucosa</div><div class="v" id="sGa">–</div><div class="s" id="sGaR"></div></div>
+      </div>
+
+      <div class="ranges" role="group" aria-label="Periodo de las gráficas">
+        <span>Periodo</span>
+        <button class="chip" data-r="7">7 días</button>
+        <button class="chip" data-r="30">30 días</button>
+        <button class="chip" data-r="90">90 días</button>
+      </div>
+
+      <section class="panel">
+        <h3>Peso e IMC</h3>
+        <div class="chart"><canvas id="chPeso"></canvas><div class="empty" id="ePeso">Guarda tu peso para empezar a ver la tendencia.</div></div>
+      </section>
+
+      <section class="panel">
+        <h3>Glucosa</h3>
+        <div class="chart"><canvas id="chGluc"></canvas><div class="empty" id="eGluc">Guarda una medición de glucosa para ver la gráfica.</div></div>
+        <p class="hint" id="glucHint" style="margin-top:8px"></p>
+      </section>
+
+      <section class="panel">
+        <h3>Medicamentos</h3>
+        <div id="meds"></div>
+        <p class="hint" style="margin-top:6px">Cada punto es un día: relleno si tomaste todas las dosis, a la mitad si solo una parte. Los de uso ocasional no cuentan porcentaje.</p>
+      </section>
+
+      <section class="panel">
+        <h3>Estudios de laboratorio</h3>
+        <p class="hint" style="margin-bottom:12px">Captura los resultados cada que te hagas estudios. Puedes llenar uno o varios con la misma fecha.</p>
+        <div class="labform">
+          <div class="field"><label for="lD">Fecha del estudio</label><input type="date" id="lD"></div>
+          <div class="grid" id="labInputs"></div>
+          <button class="btn" id="btnLab">Guardar estudio</button>
+        </div>
+        <div id="labBlocks"></div>
+      </section>
+    </div>
+  </div>
+
+  <div class="foot">
+    <button class="btn ghost small" id="btnCfg">Ajustes</button>
+    <button class="btn ghost small" id="btnBackup">Descargar respaldo</button>
+    <button class="btn ghost small" id="btnRestore">Restaurar respaldo</button>
+    <input type="file" id="fileRestore" accept="application/json,.json" hidden>
+  </div>
+</main>
+
+<dialog id="cfg">
+  <form method="dialog" id="cfgForm">
+    <h2 style="margin:0">Ajustes</h2>
+    <fieldset>
+      <legend>Tus datos</legend>
+      <div class="field"><label for="cAlt">Estatura (cm), para calcular el IMC</label><input id="cAlt" type="text" inputmode="decimal" placeholder="Ej. 161"></div>
+    </fieldset>
+    <fieldset>
+      <legend>Medicamentos</legend>
+      <div id="medEd"></div>
+      <button type="button" class="btn ghost small" id="addMed" style="justify-self:start">Agregar medicamento</button>
+      <p class="hint">Escribe los horarios separados por coma (ej. Mañana, Noche). Cada horario aparece como un botón.</p>
+    </fieldset>
+    <fieldset>
+      <legend>Rango objetivo de glucosa (mg/dL)</legend>
+      <div class="three">
+        <div class="field"><label for="cGmin">Mínimo</label><input id="cGmin" type="text" inputmode="numeric"></div>
+        <div class="field"><label for="cGmax">Máximo</label><input id="cGmax" type="text" inputmode="numeric"></div>
+        <div class="field"><label for="cGpost">Máx. 2 h después</label><input id="cGpost" type="text" inputmode="numeric"></div>
+      </div>
+      <p class="hint">Ajusta estos valores a lo que te indique tu médico.</p>
+    </fieldset>
+    <fieldset>
+      <legend>Estudios de laboratorio</legend>
+      <div class="field"><label for="cA1c">Meta de HbA1c (menos de %)</label><input id="cA1c" type="text" inputmode="decimal"></div>
+      <div class="two">
+        <div class="field"><label for="cCrMin">Creatinina mínima (mg/dL)</label><input id="cCrMin" type="text" inputmode="decimal"></div>
+        <div class="field"><label for="cCrMax">Creatinina máxima (mg/dL)</label><input id="cCrMax" type="text" inputmode="decimal"></div>
+      </div>
+      <p class="hint">Usa el rango de referencia que trae tu reporte de laboratorio o el que te indique tu médico.</p>
+    </fieldset>
+    <fieldset>
+      <legend>Sincronización con GitHub Gist</legend>
+      <div class="field"><label for="cTok">Token de GitHub (solo permiso de Gists)</label><input id="cTok" type="password" autocomplete="off"></div>
+      <div class="field"><label for="cGist">ID del Gist</label><input id="cGist" type="text" autocomplete="off"></div>
+      <p class="hint">El token se queda solo en este dispositivo. Tus datos y ajustes sí se sincronizan.</p>
+    </fieldset>
+    <div class="actions">
+      <button class="btn ghost" type="button" id="cfgCancel">Cancelar</button>
+      <button class="btn" type="submit" value="ok" id="cfgSave">Guardar ajustes</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ===== Datos ===== */
+var KEY='mc1', CKEY='mccfg', API='https://api.github.com/gists/';
+var DEF_MEDS=[
+  {id:'levo',name:'Levotiroxina',dose:'½ tableta',slots:['Ayunas'],prn:false},
+  {id:'metli',name:'Metformina/Linagliptina',dose:'',slots:['Mañana','Noche'],prn:false},
+  {id:'orli',name:'Orlistat',dose:'',slots:['Si se requiere'],prn:true}];
+var DEF_CFG={altura:161,gmin:70,gmax:130,gpost:180,a1cMax:7,creaMin:0.6,creaMax:1.2};
+/* Estudios de laboratorio: para agregar otro, suma una entrada aquí y su regla en labOut/labNote */
+var LABS=[
+  {id:'a1c',name:'Hemoglobina glucosilada (HbA1c)',short:'HbA1c',unit:'%',dec:1,lo:3,hi:20,ph:'Ej. 6.4',col:'--a1c'},
+  {id:'crea',name:'Creatinina',short:'Creatinina',unit:'mg/dL',dec:2,lo:0.1,hi:20,ph:'Ej. 0.9',col:'--crea'}];
+var D=normalize(loadData()), sel=dkey(new Date()), range=30, charts={}, syncT=null;
+
+function blank(){return {v:2,updated:'',cfg:Object.assign({},DEF_CFG,{meds:JSON.parse(JSON.stringify(DEF_MEDS))}),days:{},labs:{}};}
+function normalize(d){if(!d||typeof d!=='object'||!d.days)return null;d.cfg=Object.assign({},DEF_CFG,d.cfg||{});if(!d.cfg.altura)d.cfg.altura=DEF_CFG.altura;if(!d.labs||typeof d.labs!=='object')d.labs={};if(Array.isArray(d.a1c)){if(!d.labs.a1c)d.labs.a1c=d.a1c;delete d.a1c;}LABS.forEach(function(l){if(!Array.isArray(d.labs[l.id]))d.labs[l.id]=[];});if(!Array.isArray(d.cfg.meds))d.cfg.meds=JSON.parse(JSON.stringify(DEF_MEDS));delete d.cfg.m1;delete d.cfg.m2;d.v=2;return d;}
+function loadData(){try{var d=normalize(JSON.parse(localStorage.getItem(KEY)));if(d)return d;}catch(e){}return blank();}
+function writeLocal(){try{localStorage.setItem(KEY,JSON.stringify(D));}catch(e){toast('No se pudo guardar en este dispositivo');}}
+function persist(){D.updated=new Date().toISOString();writeLocal();scheduleSync();render();}
+
+function z(n){return String(n).padStart(2,'0');}
+function dkey(d){return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate());}
+function today(){return dkey(new Date());}
+function nowHM(){var d=new Date();return z(d.getHours())+':'+z(d.getMinutes());}
+function fShort(k){return k.slice(8)+'/'+k.slice(5,7);}
+function fLong(k){return new Date(k+'T12:00:00').toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long'});}
+function num(s){var v=parseFloat(String(s).replace(',','.'));return isFinite(v)?v:NaN;}
+function day(k){if(!D.days[k])D.days[k]={gl:[]};if(!D.days[k].gl)D.days[k].gl=[];return D.days[k];}
+function taken(x,id,si){return !!(x&&x.md&&x.md[id]&&x.md[id][si]);}
+function nTaken(x,id){return x&&x.md&&x.md[id]?Object.keys(x.md[id]).length:0;}
+function hasMd(x){return !!(x.md&&Object.keys(x.md).length);}
+function cleanDay(k){var x=D.days[k];if(x&&x.peso==null&&!hasMd(x)&&(!x.gl||!x.gl.length))delete D.days[k];}
+function mcol(i){return 'var(--m'+(i%4+1)+')';}
+function mlabel(m){return m.name+(m.dose?' '+m.dose:'');}
+function slots(){var o=[];D.cfg.meds.forEach(function(m,i){m.slots.forEach(function(s,si){o.push({m:m,i:i,si:si,s:s});});});return o;}
+function sortedKeys(){return Object.keys(D.days).sort();}
+function rangeKeys(){var out=[],t=new Date();t.setHours(12,0,0,0);for(var i=range-1;i>=0;i--){var d=new Date(t);d.setDate(t.getDate()-i);out.push(dkey(d));}return out;}
+function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+function $(id){return document.getElementById(id);}
+
+function imc(p){var h=D.cfg.altura/100;return h>0?p/(h*h):null;}
+function imcCat(v){return v<18.5?'Bajo peso':v<25?'Peso normal':v<30?'Sobrepeso':'Obesidad';}
+function glOk(r){var c=D.cfg;return r.m==='2 h después de comer'?(r.v>=c.gmin&&r.v<=c.gpost):(r.v>=c.gmin&&r.v<=c.gmax);}
+
+/* ===== Acciones ===== */
+function toggleMed(id,si){var x=day(sel);x.md=x.md||{};var m=x.md[id]=x.md[id]||{};
+  if(m[si])delete m[si];else m[si]=sel===today()?nowHM():true;
+  if(!Object.keys(m).length)delete x.md[id];if(!hasMd(x))delete x.md;cleanDay(sel);persist();}
+function savePeso(){var v=num($('peso').value);if(!(v>=20&&v<=400)){toast('Escribe un peso entre 20 y 400 kg');return;}day(sel).peso=Math.round(v*10)/10;$('peso').value='';persist();toast('Peso guardado');}
+function saveGluc(){var v=num($('gluc').value);if(!(v>=20&&v<=600)){toast('Escribe una glucosa entre 20 y 600 mg/dL');return;}
+  var t=$('glucT').value||nowHM(),x=day(sel);x.gl.push({t:t,v:Math.round(v),m:$('glucM').value});x.gl.sort(function(a,b){return a.t<b.t?-1:1;});
+  $('gluc').value='';persist();toast('Glucosa guardada');}
+function saveLab(){var dt=$('lD').value||today(),vals={},n=0,bad=null;
+  if(dt>today()){toast('La fecha del estudio no puede ser futura');return;}
+  LABS.forEach(function(l){var raw=$('lv_'+l.id).value.trim();if(!raw)return;var v=num(raw);
+    if(!(v>=l.lo&&v<=l.hi)){if(!bad)bad=l.short+': escribe un valor entre '+l.lo+' y '+l.hi+' '+l.unit;return;}
+    vals[l.id]=+v.toFixed(l.dec);n++;});
+  if(bad){toast(bad);return;}if(!n){toast('Escribe al menos un resultado');return;}
+  Object.keys(vals).forEach(function(id){var a=D.labs[id].filter(function(r){return r.d!==dt;});a.push({d:dt,v:vals[id]});
+    a.sort(function(x,y){return x.d<y.d?-1:1;});D.labs[id]=a;$('lv_'+id).value='';});
+  persist();toast(n>1?'Estudios guardados':'Estudio guardado');}
+function delLab(id,d){D.labs[id]=D.labs[id].filter(function(r){return r.d!==d;});persist();toast('Resultado borrado');}
+function delPeso(){var x=D.days[sel];if(!x)return;delete x.peso;cleanDay(sel);persist();toast('Peso borrado');}
+function delGl(i){var x=D.days[sel];if(!x)return;x.gl.splice(i,1);cleanDay(sel);persist();toast('Medición borrada');}
+
+/* ===== Render ===== */
+function render(){
+  var t=today(),x=D.days[sel]||{gl:[]},c=D.cfg;
+  $('fecha').value=sel;$('fecha').max=t;$('btnHoy').hidden=(sel===t);
+  $('dayTitle').textContent=sel===t?'Hoy':fLong(sel).replace(/^./,function(s){return s.toUpperCase();});
+  var box=$('caps');box.innerHTML='';
+  slots().forEach(function(o){var v=x.md&&x.md[o.m.id]&&x.md[o.m.id][o.si];
+    var b=document.createElement('button');b.className='cap';b.style.setProperty('--c',mcol(o.i));b.setAttribute('aria-pressed',v?'true':'false');
+    b.innerHTML='<span class="half"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span class="txt"><span class="name"></span><span class="st"></span></span>';
+    b.querySelector('.name').textContent=mlabel(o.m);
+    b.querySelector('.st').textContent=o.s+'. '+(v?(v===true?'Tomado':'Tomado a las '+v):(o.m.prn?'Toca si lo tomaste':'Pendiente, toca para marcar'));
+    b.onclick=function(){toggleMed(o.m.id,o.si);};box.appendChild(b);});
+  if(!D.cfg.meds.length)box.innerHTML='<p class="hint">Agrega tus medicamentos en Ajustes.</p>';
+  renderList(x);renderStats();renderCharts();renderMeds();renderLabs();
+}
+
+function renderList(x){
+  var ul=$('dayList');ul.innerHTML='';var any=false;
+  function li(main,sub,val,out,fn){any=true;var e=document.createElement('li');
+    var w=document.createElement('span');w.className='what';var a=document.createElement('span');a.textContent=main;w.appendChild(a);
+    if(sub){var s=document.createElement('small');s.textContent=sub;w.appendChild(s);}
+    var vv=document.createElement('span');vv.className='val'+(out?' out':'');vv.textContent=val;
+    var d=document.createElement('button');d.className='del';d.textContent='Borrar';d.onclick=fn;
+    e.appendChild(w);e.appendChild(vv);e.appendChild(d);ul.appendChild(e);}
+  if(x.peso!=null){var b=imc(x.peso);li('Peso',b?'IMC '+b.toFixed(1):'',x.peso.toFixed(1)+' kg',false,delPeso);}
+  (x.gl||[]).forEach(function(r,i){li('Glucosa '+r.t,r.m,r.v+' mg/dL',!glOk(r),function(){delGl(i);});});
+  slots().forEach(function(o){var v=x.md&&x.md[o.m.id]&&x.md[o.m.id][o.si];
+    if(v)li(mlabel(o.m),o.s+(v===true?'':', a las '+v),'✓',false,function(){toggleMed(o.m.id,o.si);});});
+  if(!any){var e=document.createElement('li');e.innerHTML='<span class="hint">Sin registros este día. Usa el formulario de arriba.</span>';ul.appendChild(e);}
+}
+
+function renderStats(){
+  var ks=sortedKeys().filter(function(k){return k<=today();}),rk=rangeKeys();
+  var pk=ks.filter(function(k){return D.days[k].peso!=null;});
+  if(pk.length){var last=D.days[pk[pk.length-1]].peso;$('sPeso').innerHTML=last.toFixed(1)+'<small>kg</small>';
+    var inR=pk.filter(function(k){return k>=rk[0];});
+    if(inR.length>1){var dlt=last-D.days[inR[0]].peso;$('sPesoD').textContent=(dlt>0?'+':'')+dlt.toFixed(1)+' kg en '+range+' días';}
+    else $('sPesoD').textContent='Último: '+fShort(pk[pk.length-1]);
+    var b=imc(last);
+    if(b){$('sImc').textContent=b.toFixed(1);$('sImcC').textContent=imcCat(b);}
+    else{$('sImc').textContent='–';$('sImcC').innerHTML='<button class="link" onclick="openCfg()">Agrega tu estatura</button>';}
+  }else{$('sPeso').textContent='–';$('sPesoD').textContent='Sin registros';$('sImc').textContent='–';
+    $('sImcC').innerHTML=D.cfg.altura?'Sin peso registrado':'<button class="link" onclick="openCfg()">Agrega tu estatura</button>';}
+
+  var all=[];ks.forEach(function(k){(D.days[k].gl||[]).forEach(function(r){all.push({k:k,r:r});});});
+  if(all.length){var l=all[all.length-1];$('sGl').innerHTML=l.r.v+'<small>mg/dL</small>';
+    var s=$('sGlM');s.textContent=l.r.m+', '+fShort(l.k)+' '+l.r.t+(glOk(l.r)?'':'. Fuera de rango');s.className='s'+(glOk(l.r)?'':' out');}
+  else{$('sGl').textContent='–';$('sGlM').textContent='Sin mediciones';$('sGlM').className='s';}
+  var inr=all.filter(function(o){return o.k>=rk[0];});
+  if(inr.length){var sum=0,ok=0;inr.forEach(function(o){sum+=o.r.v;if(glOk(o.r))ok++;});
+    $('sGa').innerHTML=Math.round(sum/inr.length)+'<small>mg/dL</small>';
+    $('sGaR').textContent=Math.round(ok*100/inr.length)+'% en rango, '+inr.length+' mediciones';}
+  else{$('sGa').textContent='–';$('sGaR').textContent='Sin mediciones en '+range+' días';}
+}
+
+function mk(id,cfg){if(charts[id]){charts[id].destroy();delete charts[id];}if(typeof Chart==='undefined')return;charts[id]=new Chart($(id),cfg);}
+function baseOpts(){return {responsive:true,maintainAspectRatio:false,animation:{duration:250},
+  interaction:{mode:'index',intersect:false},
+  plugins:{legend:{position:'bottom',labels:{boxWidth:10,boxHeight:10,usePointStyle:true,color:css('--muted')}}},
+  scales:{x:{grid:{display:false},ticks:{color:css('--muted'),maxRotation:0,autoSkip:true,maxTicksLimit:8}}}};}
+
+function renderCharts(){
+  if(typeof Chart!=='undefined'){Chart.defaults.font.family='Manrope, system-ui, sans-serif';Chart.defaults.color=css('--muted');}
+  var rk=rangeKeys(),grid=css('--line');
+  var pk=rk.filter(function(k){return D.days[k]&&D.days[k].peso!=null;});
+  $('ePeso').hidden=pk.length>0;
+  if(!pk.length){if(charts.chPeso){charts.chPeso.destroy();delete charts.chPeso;}}
+  else{
+    var o=baseOpts();o.scales.y={position:'left',grid:{color:grid},title:{display:true,text:'kg'}};
+    var ds=[{label:'Peso (kg)',data:pk.map(function(k){return D.days[k].peso;}),borderColor:css('--peso'),backgroundColor:css('--peso'),tension:.3,pointRadius:3,yAxisID:'y'}];
+    if(D.cfg.altura>0){o.scales.y1={position:'right',grid:{drawOnChartArea:false},title:{display:true,text:'IMC'}};
+      ds.push({label:'IMC',data:pk.map(function(k){return +imc(D.days[k].peso).toFixed(1);}),borderColor:css('--imc'),backgroundColor:css('--imc'),borderDash:[6,4],tension:.3,pointRadius:2,yAxisID:'y1'});}
+    mk('chPeso',{type:'line',data:{labels:pk.map(fShort),datasets:ds},options:o});
+  }
+  var pts=[];rk.forEach(function(k){var x=D.days[k];if(x&&x.gl)x.gl.forEach(function(r){pts.push({l:fShort(k)+' '+r.t,r:r});});});
+  $('eGluc').hidden=pts.length>0;
+  $('glucHint').textContent='Líneas punteadas: tu rango objetivo de '+D.cfg.gmin+' a '+D.cfg.gmax+' mg/dL. Puntos rojos: fuera de rango.';
+  if(!pts.length){if(charts.chGluc){charts.chGluc.destroy();delete charts.chGluc;}}
+  else{
+    var g=css('--gluc'),bad=css('--bad'),mu=css('--muted');
+    var o2=baseOpts();o2.scales.y={grid:{color:grid},title:{display:true,text:'mg/dL'},suggestedMin:Math.min(60,D.cfg.gmin-10),suggestedMax:Math.max(160,D.cfg.gmax+20)};
+    o2.interaction={mode:'nearest',intersect:false};
+    o2.plugins.tooltip={filter:function(i){return i.datasetIndex===0;},callbacks:{afterLabel:function(i){return pts[i.dataIndex].r.m;}}};
+    o2.plugins.legend.labels.filter=function(i){return i.datasetIndex===0;};
+    mk('chGluc',{type:'line',data:{labels:pts.map(function(p){return p.l;}),datasets:[
+      {label:'Glucosa (mg/dL)',data:pts.map(function(p){return p.r.v;}),borderColor:g,backgroundColor:g,tension:.25,pointRadius:4,
+        pointBackgroundColor:pts.map(function(p){return glOk(p.r)?g:bad;}),pointBorderColor:pts.map(function(p){return glOk(p.r)?g:bad;})},
+      {label:'Mínimo',data:pts.map(function(){return D.cfg.gmin;}),borderColor:mu,borderDash:[4,4],borderWidth:1,pointRadius:0},
+      {label:'Máximo',data:pts.map(function(){return D.cfg.gmax;}),borderColor:mu,borderDash:[4,4],borderWidth:1,pointRadius:0}
+    ]},options:o2});
+  }
+}
+
+function renderMeds(){
+  var box=$('meds');box.innerHTML='';var rk=rangeKeys(),t=today(),ks=sortedKeys(),first=ks.length?ks[0]:t;
+  D.cfg.meds.forEach(function(m,i){
+    var row=document.createElement('div');row.className='mrow';row.style.setProperty('--c',mcol(i));
+    var nm=document.createElement('span');nm.className='ml';nm.textContent=m.name;nm.title=mlabel(m);
+    var dots=document.createElement('div');dots.className='dots';var need=m.slots.length,days=0,got=0,used=0;
+    rk.forEach(function(k){var d=document.createElement('span'),n=nTaken(D.days[k],m.id),cls='dot',tip;
+      if(k<first&&!m.prn){cls+=' na';tip='antes de empezar';}
+      else if(m.prn){if(n){cls+=' on';used++;}tip=n?'tomado':'no tomado';}
+      else{days++;got+=Math.min(n,need);cls+=n>=need?' on':n?' half':'';tip=need>1?n+' de '+need+' tomas':(n?'tomado':'no registrado');}
+      if(k===t)cls+=' today';d.className=cls;d.title=fShort(k)+': '+tip;dots.appendChild(d);});
+    var p=document.createElement('span');
+    if(m.prn){p.className='pct prn';p.innerHTML=used+'<small>'+(used===1?'día':'días')+' usado</small>';}
+    else{p.className='pct';p.innerHTML=(days?Math.round(got*100/(days*need))+'%':'–')+'<small>'+got+' de '+(days*need)+' tomas</small>';}
+    row.appendChild(nm);row.appendChild(dots);row.appendChild(p);box.appendChild(row);});
+}
+
+function fDate(k){return new Date(k+'T12:00:00').toLocaleDateString('es-MX',{day:'numeric',month:'short',year:'numeric'});}
+function eag(v){return Math.round(28.7*v-46.7);}
+function labOut(id,v){var c=D.cfg;if(id==='a1c')return v>=c.a1cMax;if(id==='crea')return v<c.creaMin||v>c.creaMax;return false;}
+function labRef(id){var c=D.cfg;if(id==='a1c')return 'Meta: menos de '+c.a1cMax+' %';if(id==='crea')return 'Referencia: '+c.creaMin+' a '+c.creaMax+' mg/dL';return '';}
+function labNote(id,v){if(id==='a1c')return 'Equivale a una glucosa promedio estimada de '+eag(v)+' mg/dL';return '';}
+function labBand(id){var c=D.cfg;if(id==='a1c')return [c.a1cMax];if(id==='crea')return [c.creaMin,c.creaMax];return [];}
+function buildLabs(){
+  var inp=$('labInputs'),blk=$('labBlocks');
+  LABS.forEach(function(l){
+    var f=document.createElement('div');f.className='field';
+    f.innerHTML='<label for="lv_'+l.id+'"></label><input id="lv_'+l.id+'" type="text" inputmode="decimal" autocomplete="off">';
+    f.querySelector('label').textContent=l.short+' ('+l.unit+')';f.querySelector('input').placeholder=l.ph;
+    f.querySelector('input').addEventListener('keydown',function(e){if(e.key==='Enter')saveLab();});inp.appendChild(f);
+    var b=document.createElement('div');b.className='lab';b.style.setProperty('--c','var('+l.col+')');
+    b.innerHTML='<h4></h4><div class="labv" id="lV_'+l.id+'">–</div><div class="labs" id="lS_'+l.id+'"></div>'+
+      '<div class="chart sm"><canvas id="ch_'+l.id+'"></canvas><div class="empty" id="lE_'+l.id+'"></div></div>'+
+      '<p class="hint" id="lH_'+l.id+'"></p><ul class="list" id="lL_'+l.id+'" style="margin-top:8px"></ul>';
+    b.querySelector('h4').textContent=l.name;b.querySelector('.empty').textContent='Guarda tu próximo resultado de '+l.short.toLowerCase()+' para ver cómo evoluciona.';
+    blk.appendChild(b);});
+}
+function renderLabs(){
+  var t=today();$('lD').max=t;if(!$('lD').value||$('lD').value>t)$('lD').value=t;
+  LABS.forEach(function(l){
+    var a=D.labs[l.id]||[],id=l.id,s=$('lS_'+id),fmt=function(v){return v.toFixed(l.dec);};
+    if(a.length){var last=a[a.length-1],out=labOut(id,last.v),parts=['Estudio del '+fDate(last.d)],note=labNote(id,last.v);
+      if(note)parts.push(note);
+      if(a.length>1){var dl=last.v-a[a.length-2].v;parts.push((dl>0?'+':'')+dl.toFixed(l.dec)+' vs. el estudio anterior');}
+      if(out)parts.push('Fuera de '+(id==='a1c'?'tu meta':'rango'));
+      $('lV_'+id).innerHTML=fmt(last.v)+'<small>'+l.unit+'</small>';s.textContent=parts.join('. ');s.className='labs'+(out?' out':'');}
+    else{$('lV_'+id).textContent='–';s.textContent='Sin resultados registrados';s.className='labs';}
+    var ul=$('lL_'+id);ul.innerHTML='';
+    a.slice().reverse().forEach(function(r){var e=document.createElement('li'),w=document.createElement('span'),v=document.createElement('span'),b=document.createElement('button');
+      w.className='what';w.textContent=fDate(r.d);v.className='val'+(labOut(id,r.v)?' out':'');v.textContent=fmt(r.v)+' '+l.unit;
+      b.className='del';b.textContent='Borrar';b.onclick=function(){delLab(id,r.d);};e.appendChild(w);e.appendChild(v);e.appendChild(b);ul.appendChild(e);});
+    $('lH_'+id).textContent=a.length?labRef(id)+'. Líneas punteadas: '+(id==='a1c'?'tu meta':'rango de referencia')+'. Puntos rojos: fuera de '+(id==='a1c'?'la meta':'rango')+'.':labRef(id)+'.';
+    $('lE_'+id).hidden=a.length>0;
+    if(!a.length){if(charts['ch_'+id]){charts['ch_'+id].destroy();delete charts['ch_'+id];}return;}
+    var col=css(l.col),bad=css('--bad'),band=labBand(id),vals=a.map(function(r){return r.v;}).concat(band),o=baseOpts();
+    var mn=Math.min.apply(null,vals),mx=Math.max.apply(null,vals),pad=(mx-mn||mx*.2||1)*.25;
+    o.scales.y={grid:{color:css('--line')},title:{display:true,text:l.unit},suggestedMin:Math.max(0,mn-pad),suggestedMax:mx+pad};
+    o.interaction={mode:'nearest',intersect:false};o.plugins.legend.display=false;
+    o.plugins.tooltip={filter:function(i){return i.datasetIndex===0;},callbacks:{afterLabel:function(i){return labNote(id,a[i.dataIndex].v);}}};
+    var ds=[{label:l.short+' ('+l.unit+')',data:a.map(function(r){return r.v;}),borderColor:col,backgroundColor:col,tension:.2,pointRadius:5,
+      pointBackgroundColor:a.map(function(r){return labOut(id,r.v)?bad:col;}),pointBorderColor:a.map(function(r){return labOut(id,r.v)?bad:col;})}];
+    band.forEach(function(b){ds.push({label:'Límite',data:a.map(function(){return b;}),borderColor:css('--muted'),borderDash:[4,4],borderWidth:1,pointRadius:0});});
+    mk('ch_'+id,{type:'line',data:{labels:a.map(function(r){return fDate(r.d);}),datasets:ds},options:o});
+  });
+}
+
+/* ===== Nube/* ===== Nube (GitHub Gist) ===== */
+function gcfg(){try{return JSON.parse(localStorage.getItem(CKEY))||{};}catch(e){return {};}}
+function hdr(c){return {'Authorization':'Bearer '+c.token,'Accept':'application/vnd.github+json','Content-Type':'application/json'};}
+function setCloud(s){var m={off:['var(--muted)','Sin nube'],sync:['var(--m2)','Sincronizando'],ok:['var(--m1)','Nube al día'],err:['var(--bad)','Error de nube']}[s];
+  var b=$('cloud');b.querySelector('i').style.background=m[0];b.querySelector('span').textContent=m[1];}
+function scheduleSync(){clearTimeout(syncT);syncT=setTimeout(cloudSync,1200);}
+function cloudSync(){var c=gcfg();if(!c.token||!c.gist){setCloud('off');return Promise.resolve();}setCloud('sync');
+  return fetch(API+c.gist,{method:'PATCH',headers:hdr(c),cache:'no-store',body:JSON.stringify({files:{'data.json':{content:JSON.stringify(D)}}})})
+  .then(function(r){if(r.ok)setCloud('ok');else{setCloud('err');toast(r.status===401?'El token no es válido. Revísalo en Ajustes':r.status===404?'No se encontró el Gist. Revisa el ID en Ajustes':'No se pudo sincronizar ('+r.status+')');}})
+  .catch(function(){setCloud('err');toast('Sin conexión. Se sincronizará al volver');});}
+function cloudLoad(){var c=gcfg();if(!c.token||!c.gist){setCloud('off');return;}setCloud('sync');
+  fetch(API+c.gist,{headers:hdr(c),cache:'no-store'}).then(function(r){if(!r.ok)throw r.status;return r.json();}).then(function(g){
+    var f=g.files&&g.files['data.json'];
+    if(f&&f.truncated&&f.raw_url)return fetch(f.raw_url,{cache:'no-store'}).then(function(r){return r.text();});
+    return f?f.content:'';
+  }).then(function(txt){
+    var remote=null;
+    if(txt){try{remote=normalize(JSON.parse(txt));}catch(e){}}
+    if(remote&&(remote.updated||'')>(D.updated||'')){D=remote;writeLocal();render();setCloud('ok');toast('Datos actualizados desde la nube');}
+    else if(!remote||(D.updated||'')>(remote.updated||''))cloudSync();
+    else setCloud('ok');
+  }).catch(function(s){setCloud('err');if(s===401)toast('El token no es válido. Revísalo en Ajustes');else if(s===404)toast('No se encontró el Gist. Revisa el ID en Ajustes');});}
+
+/* ===== Ajustes y respaldo ===== */
+function openCfg(){var c=D.cfg,g=gcfg();$('cAlt').value=c.altura||'';var ed=$('medEd');ed.innerHTML='';c.meds.forEach(function(m){ed.appendChild(medRow(m));});
+  $('cGmin').value=c.gmin;$('cGmax').value=c.gmax;$('cGpost').value=c.gpost;$('cA1c').value=c.a1cMax;$('cCrMin').value=c.creaMin;$('cCrMax').value=c.creaMax;$('cTok').value=g.token||'';$('cGist').value=g.gist||'';$('cfg').showModal();}
+function saveCfg(){var c=D.cfg,a=num($('cAlt').value);
+  c.altura=(a>=50&&a<=250)?a:DEF_CFG.altura;
+  var meds=[];document.querySelectorAll('#medEd .medrow').forEach(function(r){var name=r.querySelector('.mN').value.trim();if(!name)return;
+    var prn=r.querySelector('.mP').checked,sl=r.querySelector('.mS').value.split(',').map(function(x){return x.trim();}).filter(Boolean);
+    if(prn)sl=[sl[0]||'Si se requiere'];else if(!sl.length)sl=['Diario'];
+    meds.push({id:r.dataset.id||('m'+Date.now().toString(36)+meds.length),name:name,dose:r.querySelector('.mD').value.trim(),slots:sl,prn:prn});});
+  c.meds=meds;
+  var mn=num($('cGmin').value),mx=num($('cGmax').value),ps=num($('cGpost').value);
+  if(mn>0&&mx>mn){c.gmin=mn;c.gmax=mx;}if(ps>0)c.gpost=ps;var am=num($('cA1c').value);if(am>=4&&am<=12)c.a1cMax=am;var cn=num($('cCrMin').value),cx=num($('cCrMax').value);if(cn>0&&cx>cn&&cx<=20){c.creaMin=cn;c.creaMax=cx;}
+  var tok=$('cTok').value.trim(),gist=$('cGist').value.trim().replace(/^.*\//,''),old=gcfg();
+  localStorage.setItem(CKEY,JSON.stringify({token:tok,gist:gist}));
+  persist();toast('Ajustes guardados');if(tok&&gist&&(tok!==old.token||gist!==old.gist))cloudLoad();}
+function medRow(m){var r=document.createElement('div');r.className='medrow';r.dataset.id=m.id||'';
+  r.innerHTML='<div class="two"><input class="mN" placeholder="Nombre" maxlength="40" aria-label="Nombre"><input class="mD" placeholder="Dosis, ej. ½ tableta" maxlength="30" aria-label="Dosis"></div>'+
+    '<input class="mS" placeholder="Horarios: Mañana, Noche" aria-label="Horarios">'+
+    '<div class="medfoot"><label class="chk"><input type="checkbox" class="mP"> Solo cuando se requiere</label><button type="button" class="del">Quitar</button></div>';
+  r.querySelector('.mN').value=m.name||'';r.querySelector('.mD').value=m.dose||'';r.querySelector('.mS').value=(m.slots||[]).join(', ');
+  r.querySelector('.mP').checked=!!m.prn;r.querySelector('.del').onclick=function(){r.remove();};return r;}
+function backup(){var b=new Blob([JSON.stringify(D,null,1)],{type:'application/json'}),a=document.createElement('a');
+  a.href=URL.createObjectURL(b);a.download='mi-control_respaldo_'+today()+'.json';a.click();setTimeout(function(){URL.revokeObjectURL(a.href);},2000);toast('Respaldo descargado');}
+function restore(file){if(!file)return;var rd=new FileReader();rd.onload=function(e){try{var d=normalize(JSON.parse(e.target.result));if(!d)throw 0;
+  D=d;persist();toast('Respaldo restaurado');}catch(err){toast('Ese archivo no es un respaldo válido');}};rd.readAsText(file);}
+
+var tt;function toast(m){var t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(function(){t.classList.remove('show');},2400);}
+
+/* ===== Eventos ===== */
+$('addMed').onclick=function(){var r=medRow({});$('medEd').appendChild(r);r.querySelector('.mN').focus();};
+$('btnPeso').onclick=savePeso;$('btnGluc').onclick=saveGluc;$('btnLab').onclick=saveLab;
+$('peso').addEventListener('keydown',function(e){if(e.key==='Enter')savePeso();});
+$('gluc').addEventListener('keydown',function(e){if(e.key==='Enter')saveGluc();});
+$('fecha').onchange=function(){if(this.value&&this.value<=today()){sel=this.value;$('glucT').value=sel===today()?nowHM():'08:00';render();}else this.value=sel;};
+$('btnHoy').onclick=function(){sel=today();$('glucT').value=nowHM();render();};
+document.querySelectorAll('.chip').forEach(function(b){b.onclick=function(){range=+b.dataset.r;
+  document.querySelectorAll('.chip').forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false');});renderStats();renderCharts();renderMeds();};
+  b.setAttribute('aria-pressed',+b.dataset.r===range?'true':'false');});
+$('cloud').onclick=function(){var c=gcfg();if(!c.token||!c.gist)openCfg();else cloudLoad();};
+$('btnCfg').onclick=openCfg;
+$('cfgCancel').onclick=function(){$('cfg').close();};
+$('cfgForm').addEventListener('submit',function(){saveCfg();});
+$('btnBackup').onclick=backup;
+$('btnRestore').onclick=function(){$('fileRestore').click();};
+$('fileRestore').onchange=function(){restore(this.files[0]);this.value='';};
+document.addEventListener('visibilitychange',function(){if(!document.hidden){if(sel>today())sel=today();cloudLoad();}});
+if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',function(){renderCharts();renderMeds();renderLabs();});
+
+$('glucT').value=nowHM();
+buildLabs();render();cloudLoad();
+</script>
+</body>
+</html>
