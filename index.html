@@ -284,6 +284,8 @@ dialog legend{font-weight:700;padding:0 6px}
       <div class="field"><label for="cTok">Token de GitHub (solo permiso de Gists)</label><input id="cTok" type="password" autocomplete="off"></div>
       <div class="field"><label for="cGist">ID del Gist</label><input id="cGist" type="text" autocomplete="off"></div>
       <p class="hint">El token se queda solo en este dispositivo. Tus datos y ajustes sí se sincronizan.</p>
+      <button type="button" class="btn ghost small" id="cfgLink" style="justify-self:start">Copiar enlace de configuración</button>
+      <p class="hint">Abre ese enlace una sola vez en otro teléfono y queda conectado sin escribir nada. Incluye tu token, así que envíalo solo por un medio privado.</p>
     </fieldset>
     <div class="actions">
       <button class="btn ghost" type="button" id="cfgCancel">Cancelar</button>
@@ -567,6 +569,14 @@ function backup(){var b=new Blob([JSON.stringify(D,null,1)],{type:'application/j
 function restore(file){if(!file)return;var rd=new FileReader();rd.onload=function(e){try{var d=normalize(JSON.parse(e.target.result));if(!d)throw 0;
   D=d;persist();toast('Respaldo restaurado');}catch(err){toast('Ese archivo no es un respaldo válido');}};rd.readAsText(file);}
 
+function setupFromLink(){var h=location.hash.slice(1);if(!h)return;var p=new URLSearchParams(h),t=p.get('t'),g=p.get('g');
+  if(t&&g){localStorage.setItem(CKEY,JSON.stringify({token:t,gist:g.replace(/^.*\//,'')}));setTimeout(function(){toast('Teléfono conectado a la nube');},300);}
+  try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}}
+function copySetupLink(){var tok=$('cTok').value.trim(),gist=$('cGist').value.trim().replace(/^.*\//,'');
+  if(!tok||!gist){toast('Primero escribe el token y el ID del Gist');return;}
+  var url=location.origin+location.pathname+'#t='+encodeURIComponent(tok)+'&g='+encodeURIComponent(gist);
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(url).then(function(){toast('Enlace copiado');},function(){prompt('Copia este enlace:',url);});
+  else prompt('Copia este enlace:',url);}
 var tt;function toast(m){var t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(function(){t.classList.remove('show');},2400);}
 
 /* ===== Eventos ===== */
@@ -581,6 +591,7 @@ document.querySelectorAll('.chip').forEach(function(b){b.onclick=function(){rang
   b.setAttribute('aria-pressed',+b.dataset.r===range?'true':'false');});
 $('cloud').onclick=function(){var c=gcfg();if(!c.token||!c.gist)openCfg();else cloudLoad();};
 $('btnCfg').onclick=openCfg;
+$('cfgLink').onclick=copySetupLink;
 $('cfgCancel').onclick=function(){$('cfg').close();};
 $('cfgForm').addEventListener('submit',function(){saveCfg();});
 $('btnBackup').onclick=backup;
@@ -590,7 +601,7 @@ document.addEventListener('visibilitychange',function(){if(!document.hidden){if(
 if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',function(){renderCharts();renderMeds();renderLabs();});
 
 $('glucT').value=nowHM();
-buildLabs();render();cloudLoad();
+setupFromLink();buildLabs();render();cloudLoad();
 </script>
 </body>
 </html>
