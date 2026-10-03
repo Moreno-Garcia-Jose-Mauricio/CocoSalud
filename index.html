@@ -8,8 +8,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Mi control">
-<title>Mi control</title>
+<meta name="apple-mobile-web-app-title" content="CocoSalud">
+<title>CocoSalud</title>
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💊</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -148,7 +149,7 @@ dialog legend{font-weight:700;padding:0 6px}
 <body>
 <main>
   <header class="top">
-    <h1>Mi control</h1>
+    <h1>CocoSalud</h1>
     <div class="datebox">
       <input type="date" id="fecha" aria-label="Día que estás registrando">
       <button class="btn ghost small" id="btnHoy" hidden>Hoy</button>
@@ -566,7 +567,7 @@ function medRow(m){var r=document.createElement('div');r.className='medrow';r.da
   r.querySelector('.mN').value=m.name||'';r.querySelector('.mD').value=m.dose||'';r.querySelector('.mS').value=(m.slots||[]).join(', ');
   r.querySelector('.mP').checked=!!m.prn;r.querySelector('.del').onclick=function(){r.remove();};return r;}
 function backup(){var b=new Blob([JSON.stringify(D,null,1)],{type:'application/json'}),a=document.createElement('a');
-  a.href=URL.createObjectURL(b);a.download='mi-control_respaldo_'+today()+'.json';a.click();setTimeout(function(){URL.revokeObjectURL(a.href);},2000);toast('Respaldo descargado');}
+  a.href=URL.createObjectURL(b);a.download='cocosalud_respaldo_'+today()+'.json';a.click();setTimeout(function(){URL.revokeObjectURL(a.href);},2000);toast('Respaldo descargado');}
 function restore(file){if(!file)return;var rd=new FileReader();rd.onload=function(e){try{var d=normalize(JSON.parse(e.target.result));if(!d)throw 0;
   D=d;persist();toast('Respaldo restaurado');}catch(err){toast('Ese archivo no es un respaldo válido');}};rd.readAsText(file);}
 
