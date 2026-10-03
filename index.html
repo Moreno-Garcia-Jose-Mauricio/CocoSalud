@@ -283,7 +283,7 @@ dialog legend{font-weight:700;padding:0 6px}
       <legend>Sincronización con GitHub Gist</legend>
       <div class="field"><label for="cTok">Token de GitHub (solo permiso de Gists)</label><input id="cTok" type="password" autocomplete="off"></div>
       <div class="field"><label for="cGist">ID del Gist</label><input id="cGist" type="text" autocomplete="off"></div>
-      <p class="hint">El token se queda solo en este dispositivo. Tus datos y ajustes sí se sincronizan.</p>
+      <p class="hint">El ID del Gist ya viene puesto; solo pega tu token. El token se queda solo en este dispositivo.</p>
       <button type="button" class="btn ghost small" id="cfgLink" style="justify-self:start">Copiar enlace de configuración</button>
       <p class="hint">Abre ese enlace una sola vez en otro teléfono y queda conectado sin escribir nada. Incluye tu token, así que envíalo solo por un medio privado.</p>
     </fieldset>
@@ -299,6 +299,7 @@ dialog legend{font-weight:700;padding:0 6px}
 <script>
 /* ===== Datos ===== */
 var KEY='mc1', CKEY='mccfg', API='https://api.github.com/gists/';
+var DEF_GIST='38d1ca0797bbf0eca2ea9cd981786b60'; /* Gist de CocoSalud */
 var DEF_MEDS=[
   {id:'levo',name:'Levotiroxina',dose:'½ tableta',slots:['Ayunas'],prn:false},
   {id:'metli',name:'Metformina/Linagliptina',dose:'',slots:['Mañana','Noche'],prn:false},
@@ -521,7 +522,7 @@ function renderLabs(){
 }
 
 /* ===== Nube/* ===== Nube (GitHub Gist) ===== */
-function gcfg(){try{return JSON.parse(localStorage.getItem(CKEY))||{};}catch(e){return {};}}
+function gcfg(){var c={};try{c=JSON.parse(localStorage.getItem(CKEY))||{};}catch(e){}if(!c.gist)c.gist=DEF_GIST;return c;}
 function hdr(c){return {'Authorization':'Bearer '+c.token,'Accept':'application/vnd.github+json','Content-Type':'application/json'};}
 function setCloud(s){var m={off:['var(--muted)','Sin nube'],sync:['var(--m2)','Sincronizando'],ok:['var(--m1)','Nube al día'],err:['var(--bad)','Error de nube']}[s];
   var b=$('cloud');b.querySelector('i').style.background=m[0];b.querySelector('span').textContent=m[1];}
@@ -555,7 +556,7 @@ function saveCfg(){var c=D.cfg,a=num($('cAlt').value);
   c.meds=meds;
   var mn=num($('cGmin').value),mx=num($('cGmax').value),ps=num($('cGpost').value);
   if(mn>0&&mx>mn){c.gmin=mn;c.gmax=mx;}if(ps>0)c.gpost=ps;var am=num($('cA1c').value);if(am>=4&&am<=12)c.a1cMax=am;var cn=num($('cCrMin').value),cx=num($('cCrMax').value);if(cn>0&&cx>cn&&cx<=20){c.creaMin=cn;c.creaMax=cx;}
-  var tok=$('cTok').value.trim(),gist=$('cGist').value.trim().replace(/^.*\//,''),old=gcfg();
+  var tok=$('cTok').value.trim(),gist=$('cGist').value.trim().replace(/^.*\//,'')||DEF_GIST,old=gcfg();
   localStorage.setItem(CKEY,JSON.stringify({token:tok,gist:gist}));
   persist();toast('Ajustes guardados');if(tok&&gist&&(tok!==old.token||gist!==old.gist))cloudLoad();}
 function medRow(m){var r=document.createElement('div');r.className='medrow';r.dataset.id=m.id||'';
@@ -569,8 +570,8 @@ function backup(){var b=new Blob([JSON.stringify(D,null,1)],{type:'application/j
 function restore(file){if(!file)return;var rd=new FileReader();rd.onload=function(e){try{var d=normalize(JSON.parse(e.target.result));if(!d)throw 0;
   D=d;persist();toast('Respaldo restaurado');}catch(err){toast('Ese archivo no es un respaldo válido');}};rd.readAsText(file);}
 
-function setupFromLink(){var h=location.hash.slice(1);if(!h)return;var p=new URLSearchParams(h),t=p.get('t'),g=p.get('g');
-  if(t&&g){localStorage.setItem(CKEY,JSON.stringify({token:t,gist:g.replace(/^.*\//,'')}));setTimeout(function(){toast('Teléfono conectado a la nube');},300);}
+function setupFromLink(){var h=location.hash.slice(1);if(!h)return;var p=new URLSearchParams(h),t=p.get('t'),g=p.get('g')||DEF_GIST;
+  if(t){localStorage.setItem(CKEY,JSON.stringify({token:t,gist:g.replace(/^.*\//,'')}));setTimeout(function(){toast('Teléfono conectado a la nube');},300);}
   try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}}
 function copySetupLink(){var tok=$('cTok').value.trim(),gist=$('cGist').value.trim().replace(/^.*\//,'');
   if(!tok||!gist){toast('Primero escribe el token y el ID del Gist');return;}
