@@ -11,6 +11,7 @@
 <meta name="apple-mobile-web-app-title" content="CocoSalud">
 <title>CocoSalud</title>
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💊</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -72,6 +73,11 @@ input[type=time]{flex:0 0 110px}
 .btn{border:0;border-radius:12px;padding:10px 16px;font-weight:700;cursor:pointer;background:var(--ink);color:var(--surface);white-space:nowrap}
 .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
 .btn.small{padding:6px 10px;font-size:.82rem;font-weight:600}
+.saved{margin:6px 0 0;font-size:.82rem;color:var(--muted)}
+.saved:empty{display:none}
+.saved b{color:var(--m1);font-weight:700}
+input.locked{background:color-mix(in srgb,var(--m1) 9%,var(--surface));border-color:color-mix(in srgb,var(--m1) 45%,var(--line));font-weight:700}
+select:disabled{opacity:1;background:color-mix(in srgb,var(--m1) 9%,var(--surface));border-color:color-mix(in srgb,var(--m1) 45%,var(--line));color:var(--ink)}
 .link{background:none;border:0;padding:0;color:var(--peso);font-weight:700;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 
 .list{list-style:none;margin:0;padding:0}
@@ -170,6 +176,7 @@ dialog legend{font-weight:700;padding:0 6px}
               <input id="peso" type="text" inputmode="decimal" placeholder="Ej. 78.4" autocomplete="off">
               <button class="btn" id="btnPeso">Guardar peso</button>
             </div>
+            <p class="saved" id="pesoInfo"></p>
           </div>
           <div class="field">
             <label for="gluc">Glucosa (mg/dL)</label>
@@ -187,6 +194,7 @@ dialog legend{font-weight:700;padding:0 6px}
               </select>
               <button class="btn" id="btnGluc">Guardar glucosa</button>
             </div>
+            <p class="saved" id="glInfo"></p>
           </div>
         </div>
       </section>
@@ -302,7 +310,7 @@ dialog legend{font-weight:700;padding:0 6px}
 <script>
 /* ===== Datos ===== */
 /* Sube APP_VERSION en cada cambio que publiques */
-var APP_VERSION='1.0', APP_DATE='2026-10-03';
+var APP_VERSION='1.2', APP_DATE='2026-10-03';
 var KEY='mc1', CKEY='mccfg', API='https://api.github.com/gists/';
 var DEF_GIST='38d1ca0797bbf0eca2ea9cd981786b60'; /* Gist de CocoSalud */
 var DEF_MEDS=[
@@ -314,6 +322,7 @@ var DEF_CFG={altura:161,gmin:70,gmax:130,gpost:180,a1cMax:7,creaMin:0.6,creaMax:
 var LABS=[
   {id:'a1c',name:'Hemoglobina glucosilada (HbA1c)',short:'HbA1c',unit:'%',dec:1,lo:3,hi:20,ph:'Ej. 6.4',col:'--a1c'},
   {id:'crea',name:'Creatinina',short:'Creatinina',unit:'mg/dL',dec:2,lo:0.1,hi:20,ph:'Ej. 0.9',col:'--crea'}];
+var editPeso=false,newGl=false,stP='',stG='';
 var D=normalize(loadData()), sel=dkey(new Date()), range=30, charts={}, syncT=null;
 
 function blank(){return {v:2,updated:'',cfg:Object.assign({},DEF_CFG,{meds:JSON.parse(JSON.stringify(DEF_MEDS))}),days:{},labs:{}};}
@@ -350,10 +359,10 @@ function glOk(r){var c=D.cfg;return r.m==='2 h después de comer'?(r.v>=c.gmin&&
 function toggleMed(id,si){var x=day(sel);x.md=x.md||{};var m=x.md[id]=x.md[id]||{};
   if(m[si])delete m[si];else m[si]=sel===today()?nowHM():true;
   if(!Object.keys(m).length)delete x.md[id];if(!hasMd(x))delete x.md;cleanDay(sel);persist();}
-function savePeso(){var v=num($('peso').value);if(!(v>=20&&v<=400)){toast('Escribe un peso entre 20 y 400 kg');return;}day(sel).peso=Math.round(v*10)/10;$('peso').value='';persist();toast('Peso guardado');}
+function savePeso(){var v=num($('peso').value);if(!(v>=20&&v<=400)){toast('Escribe un peso entre 20 y 400 kg');return;}day(sel).peso=Math.round(v*10)/10;editPeso=false;persist();toast('Peso guardado');}
 function saveGluc(){var v=num($('gluc').value);if(!(v>=20&&v<=600)){toast('Escribe una glucosa entre 20 y 600 mg/dL');return;}
   var t=$('glucT').value||nowHM(),x=day(sel);x.gl.push({t:t,v:Math.round(v),m:$('glucM').value});x.gl.sort(function(a,b){return a.t<b.t?-1:1;});
-  $('gluc').value='';persist();toast('Glucosa guardada');}
+  newGl=false;persist();toast('Glucosa guardada');}
 function saveLab(){var dt=$('lD').value||today(),vals={},n=0,bad=null;
   if(dt>today()){toast('La fecha del estudio no puede ser futura');return;}
   LABS.forEach(function(l){var raw=$('lv_'+l.id).value.trim();if(!raw)return;var v=num(raw);
@@ -364,8 +373,36 @@ function saveLab(){var dt=$('lD').value||today(),vals={},n=0,bad=null;
     a.sort(function(x,y){return x.d<y.d?-1:1;});D.labs[id]=a;$('lv_'+id).value='';});
   persist();toast(n>1?'Estudios guardados':'Estudio guardado');}
 function delLab(id,d){D.labs[id]=D.labs[id].filter(function(r){return r.d!==d;});persist();toast('Resultado borrado');}
-function delPeso(){var x=D.days[sel];if(!x)return;delete x.peso;cleanDay(sel);persist();toast('Peso borrado');}
-function delGl(i){var x=D.days[sel];if(!x)return;x.gl.splice(i,1);cleanDay(sel);persist();toast('Medición borrada');}
+function delPeso(){var x=D.days[sel];if(!x)return;editPeso=false;delete x.peso;cleanDay(sel);persist();toast('Peso borrado');}
+function delGl(i){var x=D.days[sel];if(!x)return;newGl=false;x.gl.splice(i,1);cleanDay(sel);persist();toast('Medición borrada');}
+
+/* ===== Diferencias vs. el registro anterior ===== */
+function sgn(n,dec){var r=+n.toFixed(dec);return (r>0?'+':r<0?'−':'±')+Math.abs(r).toFixed(dec);}
+function prevPeso(k){var ks=sortedKeys();for(var i=ks.length-1;i>=0;i--)if(ks[i]<k&&D.days[ks[i]].peso!=null)return {k:ks[i],v:D.days[ks[i]].peso};return null;}
+function prevGl(k,r){var best=null;sortedKeys().forEach(function(kk){(D.days[kk].gl||[]).forEach(function(q){
+  if(q!==r&&q.m===r.m&&(kk<k||(kk===k&&q.t<r.t)))best={k:kk,r:q};});});return best;}
+function pesoDiff(k,v){var p=prevPeso(k);return p?sgn(v-p.v,1)+' kg vs. el '+fShort(p.k):'Primer registro de peso';}
+function glDiff(k,r){var p=prevGl(k,r);return p?sgn(r.v-p.r.v,0)+' mg/dL vs. la anterior en "'+r.m+'" ('+fShort(p.k)+' '+p.r.t+')':'Primera medición en "'+r.m+'"';}
+
+function renderEntry(x){
+  /* Peso: queda fijo después de guardar; "Editar" lo desbloquea */
+  var pl=x.peso!=null&&!editPeso,k1=[sel,pl,x.peso,editPeso].join('|'),i=$('peso');
+  if(k1!==stP){stP=k1;i.readOnly=pl;i.classList.toggle('locked',pl);
+    i.value=(x.peso!=null&&(pl||editPeso))?x.peso.toFixed(1):'';$('btnPeso').textContent=pl?'Editar':'Guardar peso';}
+  $('pesoInfo').innerHTML='';
+  if(pl){var b=document.createElement('b');b.textContent='✓ Guardado. ';$('pesoInfo').appendChild(b);$('pesoInfo').appendChild(document.createTextNode(pesoDiff(sel,x.peso)));}
+  else if(editPeso)$('pesoInfo').textContent='Corrige el valor y toca Guardar peso.';
+  /* Glucosa: muestra la última medición del día; "Nueva medición" abre otra */
+  var gls=x.gl||[],last=gls[gls.length-1],gl=!!last&&!newGl,k2=[sel,gl,last?JSON.stringify(last):'',gls.length].join('|');
+  if(k2!==stG){stG=k2;['gluc','glucT'].forEach(function(id){$(id).readOnly=gl;$(id).classList.toggle('locked',gl);});$('glucM').disabled=gl;
+    if(gl){$('gluc').value=last.v;$('glucT').value=last.t;$('glucM').value=last.m;}
+    else{$('gluc').value='';$('glucT').value=sel===today()?nowHM():'08:00';}
+    $('btnGluc').textContent=gl?'Nueva medición':'Guardar glucosa';}
+  var gi=$('glInfo');gi.innerHTML='';
+  if(gl){var b2=document.createElement('b');b2.textContent='✓ Guardada a las '+last.t+'. ';gi.appendChild(b2);
+    gi.appendChild(document.createTextNode(glDiff(sel,last)+(gls.length>1?'. Llevas '+gls.length+' mediciones este día.':'.')));}
+  else if(newGl)gi.textContent='Captura la nueva medición y toca Guardar glucosa.';
+}
 
 /* ===== Render ===== */
 function render(){
@@ -380,7 +417,7 @@ function render(){
     b.querySelector('.st').textContent=o.s+'. '+(v?(v===true?'Tomado':'Tomado a las '+v):(o.m.prn?'Toca si lo tomaste':'Pendiente, toca para marcar'));
     b.onclick=function(){toggleMed(o.m.id,o.si);};box.appendChild(b);});
   if(!D.cfg.meds.length)box.innerHTML='<p class="hint">Agrega tus medicamentos en Ajustes.</p>';
-  renderList(x);renderStats();renderCharts();renderMeds();renderLabs();
+  renderEntry(x);renderList(x);renderStats();renderCharts();renderMeds();renderLabs();
 }
 
 function renderList(x){
@@ -391,8 +428,8 @@ function renderList(x){
     var vv=document.createElement('span');vv.className='val'+(out?' out':'');vv.textContent=val;
     var d=document.createElement('button');d.className='del';d.textContent='Borrar';d.onclick=fn;
     e.appendChild(w);e.appendChild(vv);e.appendChild(d);ul.appendChild(e);}
-  if(x.peso!=null){var b=imc(x.peso);li('Peso',b?'IMC '+b.toFixed(1):'',x.peso.toFixed(1)+' kg',false,delPeso);}
-  (x.gl||[]).forEach(function(r,i){li('Glucosa '+r.t,r.m,r.v+' mg/dL',!glOk(r),function(){delGl(i);});});
+  if(x.peso!=null){var b=imc(x.peso);li('Peso',(b?'IMC '+b.toFixed(1)+'. ':'')+pesoDiff(sel,x.peso),x.peso.toFixed(1)+' kg',false,delPeso);}
+  (x.gl||[]).forEach(function(r,i){li('Glucosa '+r.t,r.m+'. '+glDiff(sel,r).replace(' en "'+r.m+'"',''),r.v+' mg/dL',!glOk(r),function(){delGl(i);});});
   slots().forEach(function(o){var v=x.md&&x.md[o.m.id]&&x.md[o.m.id][o.si];
     if(v)li(mlabel(o.m),o.s+(v===true?'':', a las '+v),'✓',false,function(){toggleMed(o.m.id,o.si);});});
   if(!any){var e=document.createElement('li');e.innerHTML='<span class="hint">Sin registros este día. Usa el formulario de arriba.</span>';ul.appendChild(e);}
@@ -587,11 +624,12 @@ var tt;function toast(m){var t=$('toast');t.textContent=m;t.classList.add('show'
 
 /* ===== Eventos ===== */
 $('addMed').onclick=function(){var r=medRow({});$('medEd').appendChild(r);r.querySelector('.mN').focus();};
-$('btnPeso').onclick=savePeso;$('btnGluc').onclick=saveGluc;$('btnLab').onclick=saveLab;
-$('peso').addEventListener('keydown',function(e){if(e.key==='Enter')savePeso();});
-$('gluc').addEventListener('keydown',function(e){if(e.key==='Enter')saveGluc();});
-$('fecha').onchange=function(){if(this.value&&this.value<=today()){sel=this.value;$('glucT').value=sel===today()?nowHM():'08:00';render();}else this.value=sel;};
-$('btnHoy').onclick=function(){sel=today();$('glucT').value=nowHM();render();};
+$('btnPeso').onclick=function(){var x=D.days[sel];if(x&&x.peso!=null&&!editPeso){editPeso=true;render();$('peso').focus();$('peso').select();}else savePeso();};
+$('btnGluc').onclick=function(){var x=D.days[sel];if(x&&x.gl&&x.gl.length&&!newGl){newGl=true;render();$('gluc').focus();}else saveGluc();};$('btnLab').onclick=saveLab;
+$('peso').addEventListener('keydown',function(e){if(e.key==='Enter'&&!this.readOnly)savePeso();});
+$('gluc').addEventListener('keydown',function(e){if(e.key==='Enter'&&!this.readOnly)saveGluc();});
+$('fecha').onchange=function(){if(this.value&&this.value<=today()){sel=this.value;editPeso=false;newGl=false;render();}else this.value=sel;};
+$('btnHoy').onclick=function(){sel=today();editPeso=false;newGl=false;render();};
 document.querySelectorAll('.chip').forEach(function(b){b.onclick=function(){range=+b.dataset.r;
   document.querySelectorAll('.chip').forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false');});renderStats();renderCharts();renderMeds();};
   b.setAttribute('aria-pressed',+b.dataset.r===range?'true':'false');});
