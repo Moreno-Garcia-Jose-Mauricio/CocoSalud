@@ -37,7 +37,15 @@ button,input,select{font:inherit;color:inherit}
 .top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:4px 0 18px}
 .top h1{flex:1 1 auto;margin:0;font-size:1.75rem;font-weight:800;letter-spacing:-.03em;line-height:1.1}
 .vtag{display:inline-block;vertical-align:middle;margin-left:8px;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:2px 9px;font-size:.75rem;font-weight:600;letter-spacing:0;cursor:pointer}
-.datebox{display:flex;align-items:center;gap:6px}
+.daynav{display:grid;grid-template-columns:52px 1fr 52px;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:10px;margin:0 0 16px}
+.navbtn{height:52px;border-radius:14px;border:1px solid var(--line);background:var(--field);font-size:1.5rem;font-weight:700;line-height:1;cursor:pointer;display:grid;place-items:center}
+.navbtn:disabled{opacity:.3;cursor:default}
+.navbtn:not(:disabled):active{transform:scale(.96)}
+.daytitle{background:none;border:0;padding:4px;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;min-width:0}
+.dt1{font-size:1.3rem;font-weight:800;letter-spacing:-.02em;line-height:1.2}
+.dt2{font-size:.88rem;color:var(--muted)}
+.dt3{font-size:.75rem;color:var(--peso);font-weight:700;margin-top:2px}
+.dt3:empty{display:none}
 .cloud{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 12px;font-size:.85rem;cursor:pointer}
 .cloud i{width:9px;height:9px;border-radius:50%;background:var(--muted)}
 
@@ -165,17 +173,18 @@ dialog legend{font-weight:700;padding:0 6px}
 <main>
   <header class="top">
     <h1>CocoSalud<button class="vtag" id="vtag" title="Buscar actualización"></button></h1>
-    <div class="datebox">
-      <input type="date" id="fecha" aria-label="Día que estás registrando">
-      <button class="btn ghost small" id="btnHoy" hidden>Hoy</button>
-    </div>
     <button class="cloud" id="cloud" title="Sincronizar ahora"><i></i><span>Sin nube</span></button>
   </header>
+
+  <nav class="daynav" aria-label="Día que estás registrando">
+    <button class="navbtn" id="prevDay" aria-label="Día anterior">‹</button>
+    <button class="daytitle" id="dayGo" title="Volver a hoy"><span class="dt1" id="dt1"></span><span class="dt2" id="dt2"></span><span class="dt3" id="dt3"></span></button>
+    <button class="navbtn" id="nextDay" aria-label="Día siguiente">›</button>
+  </nav>
 
   <div class="layout">
     <div class="side">
       <section class="panel">
-        <h2 id="dayTitle">Hoy</h2>
         <div class="medbar" id="medbar" role="progressbar" aria-valuemin="0" aria-label="Medicamentos del día">
           <div class="mbtop"><span>Medicamentos del día</span><b id="mbTxt"></b></div>
           <div class="track"><i id="mbFill"></i></div>
@@ -318,7 +327,7 @@ dialog legend{font-weight:700;padding:0 6px}
 <script>
 /* ===== Datos ===== */
 /* Sube APP_VERSION en cada cambio que publiques */
-var APP_VERSION='1.5', APP_DATE='2026-10-03';
+var APP_VERSION='1.6', APP_DATE='2026-10-03';
 var KEY='mc1', CKEY='mccfg', API='https://api.github.com/gists/';
 var DEF_GIST='38d1ca0797bbf0eca2ea9cd981786b60'; /* Gist de CocoSalud */
 var DEF_MEDS=[
@@ -416,11 +425,29 @@ function renderEntry(x){
   else if(newGl)gi.textContent='Captura la nueva medición y toca Guardar glucosa.';
 }
 
+/* ===== Navegación entre días ===== */
+var lastToday=today();
+function cap1(s){return s.charAt(0).toUpperCase()+s.slice(1);}
+function renderNav(){
+  var t=today(),d=new Date(sel+'T12:00:00'),y=new Date();y.setDate(y.getDate()-1);
+  var wd=cap1(d.toLocaleDateString('es-MX',{weekday:'long'}));
+  $('dt1').textContent=sel===t?'Hoy - '+wd:sel===dkey(y)?'Ayer - '+wd:wd;
+  var date=d.toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'});
+  $('dt2').textContent=sel===t?date+' - '+new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}):date;
+  $('dt3').textContent=sel===t?'':'Toca aquí para volver a hoy';
+  $('nextDay').disabled=sel>=t;
+}
+function goDay(k){if(k>today())return;sel=k;editPeso=false;newGl=false;render();}
+function shiftDay(n){var d=new Date(sel+'T12:00:00');d.setDate(d.getDate()+n);goDay(dkey(d));}
+/* Reloj y cambio de día: a medianoche pasa solo al día nuevo con peso y glucosa vacíos */
+function tick(){var t=today();
+  if(t!==lastToday){var was=lastToday;lastToday=t;if(sel===was||sel>t){goDay(t);return;}}
+  if(sel===t)renderNav();}
+
 /* ===== Render ===== */
 function render(){
   var t=today(),x=D.days[sel]||{gl:[]},c=D.cfg;
-  $('fecha').value=sel;$('fecha').max=t;$('btnHoy').hidden=(sel===t);
-  $('dayTitle').textContent=sel===t?'Hoy':fLong(sel).replace(/^./,function(s){return s.toUpperCase();});
+  renderNav();
   var box=$('caps');box.innerHTML='';
   slots().forEach(function(o){var v=x.md&&x.md[o.m.id]&&x.md[o.m.id][o.si];
     var b=document.createElement('button');b.className='cap';b.style.setProperty('--c',mcol(o.i));b.setAttribute('aria-pressed',v?'true':'false');
@@ -638,8 +665,10 @@ $('btnPeso').onclick=function(){var x=D.days[sel];if(x&&x.peso!=null&&!editPeso)
 $('btnGluc').onclick=function(){var x=D.days[sel];if(x&&x.gl&&x.gl.length&&!newGl){newGl=true;render();$('gluc').focus();}else saveGluc();};$('btnLab').onclick=saveLab;
 $('peso').addEventListener('keydown',function(e){if(e.key==='Enter'&&!this.readOnly)savePeso();});
 $('gluc').addEventListener('keydown',function(e){if(e.key==='Enter'&&!this.readOnly)saveGluc();});
-$('fecha').onchange=function(){if(this.value&&this.value<=today()){sel=this.value;editPeso=false;newGl=false;render();}else this.value=sel;};
-$('btnHoy').onclick=function(){sel=today();editPeso=false;newGl=false;render();};
+$('prevDay').onclick=function(){shiftDay(-1);};
+$('nextDay').onclick=function(){shiftDay(1);};
+$('dayGo').onclick=function(){if(sel!==today())goDay(today());};
+setInterval(tick,1000);
 document.querySelectorAll('.chip').forEach(function(b){b.onclick=function(){range=+b.dataset.r;
   document.querySelectorAll('.chip').forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false');});renderStats();renderCharts();renderMeds();};
   b.setAttribute('aria-pressed',+b.dataset.r===range?'true':'false');});
@@ -652,7 +681,7 @@ $('cfgForm').addEventListener('submit',function(){saveCfg();});
 $('btnBackup').onclick=backup;
 $('btnRestore').onclick=function(){$('fileRestore').click();};
 $('fileRestore').onchange=function(){restore(this.files[0]);this.value='';};
-document.addEventListener('visibilitychange',function(){if(!document.hidden){if(sel>today())sel=today();cloudLoad();checkUpdate(false);}});
+document.addEventListener('visibilitychange',function(){if(!document.hidden){tick();cloudLoad();checkUpdate(false);}});
 if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',function(){renderCharts();renderMeds();renderLabs();});
 
 $('glucT').value=nowHM();
