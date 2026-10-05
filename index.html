@@ -221,6 +221,38 @@ dialog input[type=text],dialog input[type=password]{width:100%;font-size:1rem;pa
 #pinIn{width:100%;text-align:center;font-size:2rem;letter-spacing:.5em;padding:12px 0 12px .5em;border:2px solid var(--line);border-radius:16px;background:var(--field);font-weight:700}
 #pinIn:focus{border-color:var(--brand);outline:none}
 #pinErr{color:var(--bad);font-weight:700;min-height:1.5em}
+.seg2{grid-template-columns:repeat(2,1fr)}
+.seg2 button[aria-pressed="true"]{background:var(--brand);color:var(--brand-ink)}
+.foodsum .track{margin-bottom:0}
+.meal.done{border-color:var(--ok)}
+.meal.done .card-head .count{color:var(--ok)}
+.grp{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.grp:first-of-type{border-top:0}
+.grp .gi{font-size:1.35rem;width:30px;text-align:center;flex:none}
+.grp .gn{flex:1;min-width:0;font-weight:700;line-height:1.25}
+.grp .gn small{display:block;font-weight:400;color:var(--muted);font-size:.85rem}
+.portions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.por{width:40px;height:40px;border-radius:50%;border:2.5px solid var(--muted);background:var(--surface);display:grid;place-items:center;cursor:pointer;padding:0}
+.por svg{width:18px;height:18px;stroke:var(--surface);fill:none;stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round;opacity:0}
+.por[aria-pressed="true"]{background:var(--ok);border-color:var(--ok)}
+.por[aria-pressed="true"] svg{opacity:1}
+.mealall{margin-top:10px}
+.plangrid{overflow-x:auto}
+.plangrid table{border-collapse:collapse;width:100%;min-width:330px}
+.plangrid th{font-size:.78rem;color:var(--muted);font-weight:700;padding:4px 2px;text-align:center}
+.plangrid th:first-child{text-align:left}
+.plangrid td{padding:3px 2px}
+.plangrid td:first-child{font-size:.85rem;font-weight:700;padding-right:6px}
+.plangrid input{width:100%;min-width:34px;text-align:center;font-size:1rem;padding:8px 2px;border:2px solid var(--line);border-radius:10px;background:var(--field)}
+.water.done{border-color:var(--ok)}
+.water.done .card-head .count{color:var(--ok)}
+.glasses{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 14px}
+.glass{width:30px;height:38px}
+.glass path.cup{fill:none;stroke:var(--muted);stroke-width:2;stroke-linejoin:round}
+.glass rect.lvl{fill:#3B8FD9;opacity:.85}
+.glass.full path.cup{stroke:#2F7CC4}
+.wbtns{display:grid;grid-template-columns:1fr 2fr;gap:10px}
+.wbtns .btn{margin:0;white-space:nowrap;padding-left:8px;padding-right:8px}
 #toast{position:fixed;left:50%;bottom:calc(var(--tabh) + 16px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);opacity:0;z-index:30;background:var(--ink);color:var(--surface);padding:12px 20px;border-radius:16px;font-weight:700;font-size:.95rem;transition:opacity .2s,transform .2s;pointer-events:none;width:max-content;max-width:calc(100% - 32px);text-align:center}
 #toast.show{opacity:1;transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -248,6 +280,12 @@ dialog input[type=text],dialog input[type=password]{width:100%;font-size:1rem;pa
       <button class="navbtn" id="nextDay" aria-label="Día siguiente"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
     </nav>
 
+    <div class="seg seg2" role="group" aria-label="Sección de hoy">
+      <button data-sub="salud" aria-pressed="true">Salud</button>
+      <button data-sub="ali" aria-pressed="false">Alimentos</button>
+    </div>
+
+    <div class="tab" id="sub-salud">
     <section class="card" id="medcard">
       <div class="card-head"><h2>Medicamentos</h2><span class="count" id="mbTxt"></span></div>
       <div class="track" role="progressbar" aria-label="Medicamentos tomados" id="medbar"><i id="mbFill"></i></div>
@@ -281,6 +319,24 @@ dialog input[type=text],dialog input[type=password]{width:100%;font-size:1rem;pa
       <div class="status" id="glInfo"></div>
       <button class="btn" id="btnGluc">Guardar glucosa</button>
     </section>
+    </div>
+
+    <div class="tab" id="sub-ali" hidden>
+      <section class="card water" id="waterCard">
+        <div class="card-head"><h2>Agua</h2><span class="count" id="waterTxt"></span></div>
+        <div class="glasses" id="glasses" aria-hidden="true"></div>
+        <div class="wbtns">
+          <button class="btn second" id="waterMinus" aria-label="Quitar 250 mililitros">− 250 ml</button>
+          <button class="btn" id="waterPlus">+ 250 ml</button>
+        </div>
+      </section>
+      <section class="card foodsum" id="foodsum">
+        <div class="card-head"><h2>Plan de alimentación</h2><span class="count" id="foodTxt"></span></div>
+        <div class="track" role="progressbar" aria-label="Porciones comidas"><i id="foodFill"></i></div>
+        <p class="hint" style="margin-top:10px">Toca un círculo por cada porción que ya comiste.</p>
+      </section>
+      <div class="tab" id="foodMeals"></div>
+    </div>
   </section>
 
   <!-- ===== PROGRESO ===== -->
@@ -348,8 +404,14 @@ dialog input[type=text],dialog input[type=password]{width:100%;font-size:1rem;pa
       <p class="hint">En "Horarios" escribe cuándo lo tomas, separado por comas. Ejemplo: Mañana, Noche.</p>
     </fieldset>
     <fieldset>
+      <legend>Plan de alimentación (porciones)</legend>
+      <div class="plangrid" id="planEd"></div>
+      <p class="hint">Escribe cuántas porciones de cada grupo van en cada comida. Deja 0 si no lleva.</p>
+    </fieldset>
+    <fieldset>
       <legend>Tus datos</legend>
       <div class="field"><label for="cAlt">Estatura (cm)</label><input id="cAlt" type="text" inputmode="decimal" placeholder="161"></div>
+      <div class="field"><label for="cAgua">Meta de agua al día (ml)</label><input id="cAgua" type="text" inputmode="numeric" placeholder="2500"></div>
     </fieldset>
     <fieldset>
       <legend>Rango de glucosa (mg/dL)</legend>
@@ -411,7 +473,7 @@ dialog input[type=text],dialog input[type=password]{width:100%;font-size:1rem;pa
 
 /* ===== Datos ===== */
 /* Sube APP_VERSION en cada cambio que publiques */
-var APP_VERSION='2.4', APP_DATE='2026-10-04';
+var APP_VERSION='2.7', APP_DATE='2026-10-04';
 var KEY='mc1', CKEY='mccfg', API='https://api.github.com/gists/';
 var DEF_GIST='38d1ca0797bbf0eca2ea9cd981786b60'; /* Gist de CocoSalud */
 var DEF_MEDS=[
@@ -420,7 +482,13 @@ var DEF_MEDS=[
   {id:'cplxb',name:'Complejo B',dose:'',slots:['Diario'],prn:false},
   {id:'sert',name:'Sertralina',dose:'',slots:['Diario'],prn:false},
   {id:'orli',name:'Orlistat',dose:'',slots:['Si se requiere'],prn:true}];
-var DEF_CFG={altura:161,gmin:70,gmax:130,gpost:180,a1cMax:7,creaMin:0.6,creaMax:1.2};
+var MEALS=['Desayuno','Colación de la mañana','Comida','Colación de la tarde','Cena'],MEALS_S=['Des.','Col.','Com.','Col.','Cena'];
+var GROUPS=[
+  {id:'verd',n:'Verduras',i:'🥦'},{id:'frut',n:'Frutas',i:'🍎'},{id:'cer',n:'Cereales',i:'🌾'},
+  {id:'ani',n:'Alimentos de origen animal',s:'Origen animal',i:'🍗'},{id:'lec',n:'Leche',i:'🥛'},{id:'gra',n:'Grasas',i:'🥑'},
+  {id:'grp',n:'Grasas con proteína',i:'🥜'},{id:'leg',n:'Leguminosas',i:'🫘'},{id:'azu',n:'Azúcares',i:'🍯'}];
+var DEF_PLAN={verd:[1,1,2,0,1],frut:[0,1,0,1,0],cer:[2,2,3,1,2],ani:[2,0,2,0,1],lec:[0,0,0,0,0],gra:[1,0,1,0,0],grp:[0,1,0,1,0],leg:[0,0,0,0,0],azu:[0,0,0,0,0]};
+var DEF_CFG={agua:2500,altura:161,gmin:70,gmax:130,gpost:180,a1cMax:7,creaMin:0.6,creaMax:1.2};
 /* Estudios de laboratorio: para agregar otro, suma una entrada aquí y su regla en labOut/labNote */
 var LABS=[
   {id:'a1c',name:'Hemoglobina glucosilada (HbA1c)',short:'HbA1c',unit:'%',dec:1,lo:3,hi:20,ph:'Ej. 6.4',col:'--a1c'},
@@ -429,7 +497,7 @@ var editPeso=false,newGl=false,stP='',stG='',glM='Ayunas';
 var D=normalize(loadData()), sel=dkey(new Date()), range=30, charts={}, syncT=null;
 
 function blank(){return {v:2,updated:'',cfg:Object.assign({},DEF_CFG,{meds:JSON.parse(JSON.stringify(DEF_MEDS))}),days:{},labs:{}};}
-function normalize(d){if(!d||typeof d!=='object'||!d.days)return null;d.cfg=Object.assign({},DEF_CFG,d.cfg||{});if(!d.cfg.altura)d.cfg.altura=DEF_CFG.altura;if(!d.labs||typeof d.labs!=='object')d.labs={};if(Array.isArray(d.a1c)){if(!d.labs.a1c)d.labs.a1c=d.a1c;delete d.a1c;}LABS.forEach(function(l){if(!Array.isArray(d.labs[l.id]))d.labs[l.id]=[];});if(!Array.isArray(d.cfg.meds))d.cfg.meds=JSON.parse(JSON.stringify(DEF_MEDS));delete d.cfg.m1;delete d.cfg.m2;if(!d.cfg.migB){if(!d.cfg.meds.some(function(m){return /complejo\s*b/i.test(m.name);})){var pi=d.cfg.meds.findIndex(function(m){return m.prn;}),nb={id:'cplxb',name:'Complejo B',dose:'',slots:['Diario'],prn:false};if(pi<0)d.cfg.meds.push(nb);else d.cfg.meds.splice(pi,0,nb);}d.cfg.migB=true;}if(!d.cfg.migS){if(!d.cfg.meds.some(function(m){return /sertral/i.test(m.name);})){var pj=d.cfg.meds.findIndex(function(m){return m.prn;}),ns={id:'sert',name:'Sertralina',dose:'',slots:['Diario'],prn:false};if(pj<0)d.cfg.meds.push(ns);else d.cfg.meds.splice(pj,0,ns);}d.cfg.migS=true;}d.v=2;return d;}
+function normalize(d){if(!d||typeof d!=='object'||!d.days)return null;d.cfg=Object.assign({},DEF_CFG,d.cfg||{});if(!d.cfg.altura)d.cfg.altura=DEF_CFG.altura;if(!d.cfg.migW){if(d.cfg.agua===2000)d.cfg.agua=2500;d.cfg.migW=true;}if(!d.cfg.plan||typeof d.cfg.plan!=='object')d.cfg.plan=JSON.parse(JSON.stringify(DEF_PLAN));GROUPS.forEach(function(g){if(!Array.isArray(d.cfg.plan[g.id]))d.cfg.plan[g.id]=[0,0,0,0,0];});if(!d.labs||typeof d.labs!=='object')d.labs={};if(Array.isArray(d.a1c)){if(!d.labs.a1c)d.labs.a1c=d.a1c;delete d.a1c;}LABS.forEach(function(l){if(!Array.isArray(d.labs[l.id]))d.labs[l.id]=[];});if(!Array.isArray(d.cfg.meds))d.cfg.meds=JSON.parse(JSON.stringify(DEF_MEDS));delete d.cfg.m1;delete d.cfg.m2;if(!d.cfg.migB){if(!d.cfg.meds.some(function(m){return /complejo\s*b/i.test(m.name);})){var pi=d.cfg.meds.findIndex(function(m){return m.prn;}),nb={id:'cplxb',name:'Complejo B',dose:'',slots:['Diario'],prn:false};if(pi<0)d.cfg.meds.push(nb);else d.cfg.meds.splice(pi,0,nb);}d.cfg.migB=true;}if(!d.cfg.migS){if(!d.cfg.meds.some(function(m){return /sertral/i.test(m.name);})){var pj=d.cfg.meds.findIndex(function(m){return m.prn;}),ns={id:'sert',name:'Sertralina',dose:'',slots:['Diario'],prn:false};if(pj<0)d.cfg.meds.push(ns);else d.cfg.meds.splice(pj,0,ns);}d.cfg.migS=true;}d.v=2;return d;}
 function loadData(){try{var d=normalize(JSON.parse(localStorage.getItem(KEY)));if(d)return d;}catch(e){}return blank();}
 function writeLocal(){try{localStorage.setItem(KEY,JSON.stringify(D));}catch(e){toast('No se pudo guardar en este dispositivo');}}
 function persist(){D.updated=new Date().toISOString();writeLocal();scheduleSync();render();}
@@ -445,7 +513,8 @@ function day(k){if(!D.days[k])D.days[k]={gl:[]};if(!D.days[k].gl)D.days[k].gl=[]
 function taken(x,id,si){return !!(x&&x.md&&x.md[id]&&x.md[id][si]);}
 function nTaken(x,id){return x&&x.md&&x.md[id]?Object.keys(x.md[id]).length:0;}
 function hasMd(x){return !!(x.md&&Object.keys(x.md).length);}
-function cleanDay(k){var x=D.days[k];if(x&&x.peso==null&&!hasMd(x)&&!x.pasos&&(!x.gl||!x.gl.length))delete D.days[k];}
+function hasFood(x){return !!(x.food&&Object.keys(x.food).length);}
+function cleanDay(k){var x=D.days[k];if(x&&x.peso==null&&!hasMd(x)&&!x.pasos&&!hasFood(x)&&!x.agua&&(!x.gl||!x.gl.length))delete D.days[k];}
 function mcol(i){return 'var(--m'+(i%4+1)+')';}
 function mlabel(m){return nice(m.name)+(m.dose?' '+m.dose:'');}
 function nice(n){return n.replace(/\//g,'/\u200b');}
@@ -463,6 +532,51 @@ function glOk(r){var c=D.cfg;return r.m==='2 h después de comer'?(r.v>=c.gmin&&
 function toggleMed(id,si){var x=day(sel);x.md=x.md||{};var m=x.md[id]=x.md[id]||{};
   if(m[si])delete m[si];else m[si]=sel===today()?nowHM():true;
   if(!Object.keys(m).length)delete x.md[id];if(!hasMd(x))delete x.md;cleanDay(sel);persist();}
+/* ===== Agua (de 250 en 250 ml) ===== */
+function fmtMl(v){return v.toLocaleString('es-MX')+' ml';}
+function addWater(d){var x=day(sel),v=(x.agua||0)+d;if(v<0)return;if(v>0)x.agua=v;else delete x.agua;cleanDay(sel);persist();
+  if(d>0&&v===D.cfg.agua)toast('¡Meta de agua cumplida!');}
+function renderWater(x){var goal=D.cfg.agua,v=x.agua||0,n=Math.max(Math.ceil(goal/250),Math.ceil(v/250)),full=Math.floor(v/250),g=$('glasses');g.innerHTML='';
+  for(var i=0;i<n;i++){var f=i<full;g.insertAdjacentHTML('beforeend','<svg class="glass'+(f?' full':'')+'" viewBox="0 0 30 38"><clipPath id="gc'+i+'"><path d="M4 3h22l-3 32H7z"/></clipPath>'+
+    (f?'<rect class="lvl" x="0" y="10" width="30" height="28" clip-path="url(#gc'+i+')"/>':'')+'<path class="cup" d="M4 3h22l-3 32H7z"/></svg>');}
+  $('waterCard').classList.toggle('done',v>=goal);$('waterTxt').textContent=(v>=goal?'✓ ':'')+fmtMl(v)+' de '+fmtMl(goal);
+  $('waterMinus').disabled=!v;$('waterMinus').style.opacity=v?'':'.4';}
+
+/* ===== Alimentos ===== */
+function eaten(x,mi,gid){return x&&x.food&&x.food[mi]&&x.food[mi][gid]||0;}
+function setFood(mi,gid,v){var x=day(sel);x.food=x.food||{};var m=x.food[mi]=x.food[mi]||{};
+  if(v>0)m[gid]=v;else delete m[gid];if(!Object.keys(m).length)delete x.food[mi];if(!hasFood(x))delete x.food;cleanDay(sel);persist();}
+function foodTotals(x){var P=D.cfg.plan,tot=0,dn=0;MEALS.forEach(function(mn,mi){GROUPS.forEach(function(g){var q=P[g.id][mi]||0;tot+=q;dn+=Math.min(eaten(x,mi,g.id),q);});});return {tot:tot,dn:dn};}
+function renderFood(x){
+  var P=D.cfg.plan,box=$('foodMeals');box.innerHTML='';
+  MEALS.forEach(function(mn,mi){
+    var gs=GROUPS.filter(function(g){return (P[g.id][mi]||0)>0;});if(!gs.length)return;
+    var mt=0,md=0;gs.forEach(function(g){mt+=P[g.id][mi];md+=Math.min(eaten(x,mi,g.id),P[g.id][mi]);});
+    var c=el('section','card meal'+(md===mt?' done':'')),h=el('div','card-head');h.appendChild(el('h2','',mn));
+    h.appendChild(el('span','count',md===mt?'✓ Listo':md+' de '+mt));c.appendChild(h);
+    gs.forEach(function(g){var q=P[g.id][mi],e=eaten(x,mi,g.id),r=el('div','grp');
+      r.appendChild(el('span','gi',g.i));var nm=el('span','gn',g.s||g.n);nm.appendChild(el('small','',q===1?'1 porción':q+' porciones'));r.appendChild(nm);
+      var ps=el('div','portions');
+      for(var k=0;k<q;k++)(function(k){var b=el('button','por');b.setAttribute('aria-pressed',k<e?'true':'false');
+        b.setAttribute('aria-label',(g.s||g.n)+', porción '+(k+1)+' de '+q);
+        b.innerHTML='<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+        b.onclick=function(){setFood(mi,g.id,e>=k+1?k:k+1);};ps.appendChild(b);})(k);
+      r.appendChild(ps);c.appendChild(r);});
+    var all=el('button','btn second mealall',md===mt?'Desmarcar '+mn.toLowerCase():'Ya me comí todo');
+    all.onclick=function(){var full=md===mt;gs.forEach(function(g){var x2=day(sel);x2.food=x2.food||{};var m=x2.food[mi]=x2.food[mi]||{};if(full)delete m[g.id];else m[g.id]=P[g.id][mi];});
+      var x3=D.days[sel];if(x3&&x3.food){if(x3.food[mi]&&!Object.keys(x3.food[mi]).length)delete x3.food[mi];if(!hasFood(x3))delete x3.food;}cleanDay(sel);persist();
+      if(!full)toast(mn+' completo');};
+    c.appendChild(all);box.appendChild(c);});
+  var t=foodTotals(x);$('foodsum').classList.toggle('done',t.tot>0&&t.dn===t.tot);
+  $('foodFill').style.width=(t.tot?t.dn*100/t.tot:0)+'%';$('foodTxt').textContent=t.tot?(t.dn===t.tot?'✓ ':'')+t.dn+' de '+t.tot+' porciones':'';
+  if(!t.tot)box.innerHTML='<p class="hint">Escribe tu plan de alimentación en Ajustes.</p>';
+}
+function buildPlanEditor(){var P=D.cfg.plan,h='<table><thead><tr><th>Grupo</th>';
+  MEALS_S.forEach(function(m){h+='<th>'+m+'</th>';});h+='</tr></thead><tbody>';
+  GROUPS.forEach(function(g){h+='<tr><td>'+g.i+' '+(g.s||g.n)+'</td>';for(var mi=0;mi<5;mi++)h+='<td><input type="text" inputmode="numeric" maxlength="1" data-g="'+g.id+'" data-m="'+mi+'" value="'+(P[g.id][mi]||0)+'" aria-label="'+(g.s||g.n)+' en '+MEALS[mi]+'"></td>';h+='</tr>';});
+  $('planEd').innerHTML=h+'</tbody></table>';}
+function readPlanEditor(){var P=D.cfg.plan;document.querySelectorAll('#planEd input').forEach(function(i){var v=parseInt(i.value,10);P[i.dataset.g][+i.dataset.m]=(v>=0&&v<=9)?v:0;});}
+
 function toggleSteps(){var x=day(sel);if(x.pasos)delete x.pasos;else x.pasos=sel===today()?nowHM():true;cleanDay(sel);persist();if(x.pasos)toast('¡Bien! 10,000 pasos registrados');}
 function savePeso(){var v=num($('peso').value);if(!(v>=20&&v<=400)){toast('Revisa el peso: debe estar entre 20 y 400 kg');return;}day(sel).peso=Math.round(v*10)/10;editPeso=false;persist();toast('Peso guardado');}
 function saveGluc(){var v=num($('gluc').value);if(!(v>=20&&v<=600)){toast('Revisa la glucosa: debe estar entre 20 y 600');return;}
@@ -557,7 +671,7 @@ function render(){
   $('allsetTxt').textContent=sel===t?'Listo, ya tomaste todo lo de hoy.':'Ese día tomaste todo.';
   var sp=x.pasos;$('stepsBtn').setAttribute('aria-pressed',sp?'true':'false');
   $('stepsTxt').textContent=sp?('Listo'+(sp===true?'':', registrado a las '+sp)):'Toca cuando los completes';
-  renderEntry(x);renderStats();renderLabStats();renderCharts();renderMeds();renderLabs();
+  renderEntry(x);renderWater(x);renderFood(x);renderStats();renderLabStats();renderCharts();renderMeds();renderLabs();
 }
 
 function rlabel(){return range===90?'3 meses':range+' días';}
@@ -643,6 +757,18 @@ function renderMeds(){
     if(k<first)d.className+=' na';else{dd++;if(ok){on2++;d.className+=' on';}}if(k===t)d.className+=' today';
     d.title=fShort(k)+(ok?': 10,000 pasos':'');dots2.appendChild(d);});
   var p2=el('span','pct',dd?Math.round(on2*100/dd)+'%':'–');p2.appendChild(el('small','',on2+' de '+dd+' días'));
+  var row3=el('div','mrow');row3.style.setProperty('--c','var(--m2)');var mh3=el('div','mh'),dots3=el('div','dots'),fd=0,fs=0,ft=0;
+  rk.forEach(function(k){var d=el('span','dot'),x=D.days[k],tt=foodTotals(x);
+    if(k<first)d.className+=' na';else{fd++;fs+=tt.dn;ft+=tt.tot;d.className+=tt.tot&&tt.dn>=tt.tot?' on':tt.dn?' half':'';}if(k===t)d.className+=' today';
+    d.title=fShort(k)+': '+tt.dn+' de '+tt.tot+' porciones';dots3.appendChild(d);});
+  var p3=el('span','pct',ft?Math.round(fs*100/ft)+'%':'–');p3.appendChild(el('small','',fs+' de '+ft+' porciones'));
+  mh3.appendChild(el('span','ml','Plan de alimentación'));mh3.appendChild(p3);row3.appendChild(mh3);row3.appendChild(dots3);box.appendChild(row3);
+  var row4=el('div','mrow');row4.style.setProperty('--c','#3B8FD9');var mh4=el('div','mh'),dots4=el('div','dots'),wd=0,wok=0,wsum=0;
+  rk.forEach(function(k){var d=el('span','dot'),x=D.days[k],v=x&&x.agua||0;
+    if(k<first)d.className+=' na';else{wd++;wsum+=v;if(v>=D.cfg.agua){wok++;d.className+=' on';}else if(v)d.className+=' half';}if(k===t)d.className+=' today';
+    d.title=fShort(k)+': '+fmtMl(v);dots4.appendChild(d);});
+  var p4=el('span','pct',wd?Math.round(wok*100/wd)+'%':'–');p4.appendChild(el('small','',wd?'Promedio '+fmtMl(Math.round(wsum/wd/50)*50)+' al día':''));
+  mh4.appendChild(el('span','ml','Agua'));mh4.appendChild(p4);row4.appendChild(mh4);row4.appendChild(dots4);box.appendChild(row4);
   mh2.appendChild(el('span','ml','10,000 pasos'));mh2.appendChild(p2);row2.appendChild(mh2);row2.appendChild(dots2);box.appendChild(row2);
 }
 
@@ -736,9 +862,9 @@ function openCfg(){$('pinIn').value='';$('pinErr').textContent='';$('pinDlg').sh
 function checkPin(){var v=$('pinIn').value.trim();
   if(v===SETTINGS_PIN){$('pinDlg').close();openCfgNow();}
   else{$('pinErr').textContent='PIN incorrecto. Intenta de nuevo.';$('pinIn').value='';$('pinIn').focus();}}
-function openCfgNow(){var c=D.cfg,g=gcfg();$('cAlt').value=c.altura||'';var ed=$('medEd');ed.innerHTML='';c.meds.forEach(function(m){ed.appendChild(medRow(m));});
+function openCfgNow(){var c=D.cfg,g=gcfg();buildPlanEditor();$('cAgua').value=c.agua;$('cAlt').value=c.altura||'';var ed=$('medEd');ed.innerHTML='';c.meds.forEach(function(m){ed.appendChild(medRow(m));});
   $('cGmin').value=c.gmin;$('cGmax').value=c.gmax;$('cGpost').value=c.gpost;$('cA1c').value=c.a1cMax;$('cCrMin').value=c.creaMin;$('cCrMax').value=c.creaMax;$('cTok').value=g.token||'';$('cGist').value=g.gist||'';$('cfg').showModal();}
-function saveCfg(){var c=D.cfg,a=num($('cAlt').value);
+function saveCfg(){var c=D.cfg,a=num($('cAlt').value);readPlanEditor();var ag=num($('cAgua').value);if(ag>=250&&ag<=6000)c.agua=Math.round(ag/250)*250;
   c.altura=(a>=50&&a<=250)?a:DEF_CFG.altura;
   var meds=[];document.querySelectorAll('#medEd .medrow').forEach(function(r){var name=r.querySelector('.mN').value.trim();if(!name)return;
     var prn=r.querySelector('.mP').checked,sl=r.querySelector('.mS').value.split(',').map(function(x){return x.trim();}).filter(Boolean);
@@ -784,6 +910,11 @@ var tt;function toast(m){var t=$('toast');t.textContent=m;t.classList.add('show'
 /* ===== Eventos ===== */
 $('addMed').onclick=function(){var r=medRow({});$('medEd').appendChild(r);r.querySelector('.mN').focus();};
 $('stepsBtn').onclick=toggleSteps;
+$('waterPlus').onclick=function(){addWater(250);};
+$('waterMinus').onclick=function(){addWater(-250);};
+document.querySelectorAll('[data-sub]').forEach(function(b){b.onclick=function(){var n=b.dataset.sub;
+  document.querySelectorAll('[data-sub]').forEach(function(o){o.setAttribute('aria-pressed',o===b?'true':'false');});
+  $('sub-salud').hidden=n!=='salud';$('sub-ali').hidden=n!=='ali';};});
 $('btnPeso').onclick=function(){var x=D.days[sel];if(x&&x.peso!=null&&!editPeso){editPeso=true;render();$('peso').focus();$('peso').select();}else savePeso();};
 $('btnGluc').onclick=function(){var x=D.days[sel];if(x&&x.gl&&x.gl.length&&!newGl){newGl=true;render();$('gluc').focus();}else saveGluc();};$('btnLab').onclick=saveLab;
 $('peso').addEventListener('keydown',function(e){if(e.key==='Enter'&&!this.readOnly)savePeso();});
