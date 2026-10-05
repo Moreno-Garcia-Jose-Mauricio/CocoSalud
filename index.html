@@ -16,6 +16,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<script>
+/* Aviso de seguridad: si algo falla al cargar, se muestra en pantalla en lugar de quedar en blanco */
+(function(){function show(msg){var d=document.getElementById('fatal');if(!d){window.__fatalMsg=msg;return;}d.hidden=false;d.querySelector('span').textContent=msg;}
+  window.addEventListener('error',function(e){show((e.message||'Error')+(e.lineno?' (línea '+e.lineno+')':''));});
+  window.addEventListener('DOMContentLoaded',function(){if(window.__fatalMsg)show(window.__fatalMsg);});
+  window.addEventListener('load',function(){setTimeout(function(){if(!window.__appOk)show('La app no terminó de cargar. Es probable que el archivo index.html se haya subido incompleto: vuelve a subirlo.');},1500);});})();
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 /* Paleta "jacaranda": violeta profundo para acciones, verde para lo cumplido, rojo solo para alertas */
@@ -303,6 +310,8 @@ details.notes p{margin:6px 0;font-size:.9rem}
 #printArea{display:none}
 @media print{body.printing>*:not(#printArea){display:none!important}body.printing #printArea{display:block}body{background:#fff;color:#000}
   #printArea .rep th{background:#e9e4f7}#printArea h3{break-after:avoid}#printArea table{break-inside:avoid}}
+#fatal{background:var(--bad-soft);color:var(--bad);border:2px solid var(--bad);border-radius:16px;padding:12px 14px;margin:0 0 12px;font-weight:700;font-size:.92rem}
+#fatal small{display:block;font-weight:400;margin-top:4px;word-break:break-word}
 #toast{position:fixed;left:50%;bottom:calc(var(--tabh) + 16px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);opacity:0;z-index:30;background:var(--ink);color:var(--surface);padding:12px 20px;border-radius:16px;font-weight:700;font-size:.95rem;transition:opacity .2s,transform .2s;pointer-events:none;width:max-content;max-width:calc(100% - 32px);text-align:center}
 #toast.show{opacity:1;transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -310,6 +319,7 @@ details.notes p{margin:6px 0;font-size:.9rem}
 </head>
 <body>
 <main>
+  <div id="fatal" role="alert" hidden>Algo falló al abrir la app. Mándale una captura de este mensaje a Mauricio.<small><span></span></small></div>
   <header class="top">
     <div class="brand">
       <svg viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="11" fill="var(--brand)"/><g transform="rotate(-38 20 20)"><rect x="8" y="15" width="24" height="10" rx="5" fill="var(--brand-ink)"/><path d="M13 15h7v10h-7a5 5 0 0 1 0-10z" fill="#F4C95D"/></g></svg>
@@ -570,7 +580,7 @@ details.notes p{margin:6px 0;font-size:.9rem}
 
 /* ===== Datos ===== */
 /* Sube APP_VERSION en cada cambio que publiques */
-var APP_VERSION='3.5', APP_DATE='2026-10-04';
+var APP_VERSION='3.6', APP_DATE='2026-10-04';
 var KEY='mc1', CKEY='mccfg', API='https://api.github.com/gists/';
 var DEF_GIST='38d1ca0797bbf0eca2ea9cd981786b60'; /* Gist de CocoSalud */
 var DEF_MEDS=[
@@ -1173,4 +1183,25 @@ $('cfgLink').onclick=copySetupLink;
 $('pinForm').addEventListener('submit',function(e){e.preventDefault();checkPin();});
 $('pinIn').addEventListener('input',function(){this.value=this.value.replace(/\D/g,'').slice(0,4);$('pinErr').textContent='';if(this.value.length===4)checkPin();});
 $('pinCancel').onclick=function(){$('pinDlg').close();};
-$('cfgCancel').onclick=$('c
+$('cfgCancel').onclick=$('cfgCancel2').onclick=function(){$('cfg').close();};
+document.querySelectorAll('.mom').forEach(function(b){b.onclick=function(){if(b.disabled)return;glM=b.dataset.m;setMoments(glM,false);};});
+function showTab(n){['hoy','prog','est'].forEach(function(k){$('tab-'+k).hidden=k!==n;$('t-'+k).setAttribute('aria-selected',k===n?'true':'false');});
+  window.scrollTo(0,0);if(n==='prog'){renderTodayStats();renderLabStats();renderCharts();renderMeds();}if(n==='est')renderLabs();}
+$('goEst').onclick=function(){showTab('est');};
+document.querySelectorAll('.tabbar button').forEach(function(b){b.onclick=function(){showTab(b.dataset.tab);};});
+$('cfgForm').addEventListener('submit',function(){saveCfg();});
+$('btnBackup').onclick=backup;
+$('btnRestore').onclick=function(){$('fileRestore').click();};
+$('fileRestore').onchange=function(){restore(this.files[0]);this.value='';};
+document.addEventListener('visibilitychange',function(){if(!document.hidden){tick();cloudLoad();checkUpdate(false);}});
+if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',function(){renderCharts();renderMeds();renderLabs();});
+
+$('glucT').value=nowHM();
+$('ver').textContent='CocoSalud versión '+APP_VERSION+', publicada el '+new Date(APP_DATE+'T12:00:00').toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'});
+$('vtag').textContent='Versión '+APP_VERSION;
+setupFromLink();buildLabs();render();cloudLoad();checkUpdate(false);
+window.__appOk=true;
+
+</script>
+</body>
+</html>
