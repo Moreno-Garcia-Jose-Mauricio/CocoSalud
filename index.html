@@ -23,7 +23,7 @@
   window.addEventListener('DOMContentLoaded',function(){if(window.__fatalMsg)show(window.__fatalMsg);});
   window.addEventListener('load',function(){setTimeout(function(){if(!window.__appOk)show('La app no terminó de cargar. Es probable que el archivo index.html se haya subido incompleto: vuelve a subirlo.');},1500);});})();
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" onload="window.__chartReady&&window.__chartReady()"></script>
 <style>
 /* Paleta "jacaranda": violeta profundo para acciones, verde para lo cumplido, rojo solo para alertas */
 :root{
@@ -312,6 +312,12 @@ details.notes p{margin:6px 0;font-size:.9rem}
   #printArea .rep th{background:#e9e4f7}#printArea h3{break-after:avoid}#printArea table{break-inside:avoid}}
 #fatal{background:var(--bad-soft);color:var(--bad);border:2px solid var(--bad);border-radius:16px;padding:12px 14px;margin:0 0 12px;font-weight:700;font-size:.92rem}
 #fatal small{display:block;font-weight:400;margin-top:4px;word-break:break-word}
+.rep .sumttl{margin:16px 0 8px;font-size:1.1rem}
+.rep table.sum td:first-child{width:38%}
+.rep table.sum td{font-size:.95rem}
+.rep table.sum b{font-size:1.05rem}
+.rep table.sum .note{display:block;color:var(--muted);font-size:.85rem}
+#printArea table.sum .note{color:#555}
 #toast{position:fixed;left:50%;bottom:calc(var(--tabh) + 16px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);opacity:0;z-index:30;background:var(--ink);color:var(--surface);padding:12px 20px;border-radius:16px;font-weight:700;font-size:.95rem;transition:opacity .2s,transform .2s;pointer-events:none;width:max-content;max-width:calc(100% - 32px);text-align:center}
 #toast.show{opacity:1;transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -395,7 +401,7 @@ details.notes p{margin:6px 0;font-size:.9rem}
         <div class="card-head"><h2>Plan de alimentación</h2><span class="count" id="foodTxt"></span></div>
         <div class="track" role="progressbar" aria-label="Porciones comidas"><i id="foodFill"></i></div>
         <p class="hint" style="margin-top:10px">En cada comida toca <b>+ Agregar</b> y elige lo que comiste. Puedes llenarlo cuando quieras.</p>
-        <button class="btn second" id="btnReport">Ver reporte de comidas</button>
+        <button class="btn second" id="btnReport">Ver reporte</button>
         <details class="notes"><summary>Indicaciones de tu nutrióloga</summary>
           <p><b>Libres (en Verduras, marcados como "Alimento libre"; no cuentan porción):</b> acelga cruda, ajo, apio, cebolla, cilantro, chiles, espinaca cruda, lechuga, limón, hierbas de olor, especias, quelites, xoconostle y sustituto de azúcar.</p>
           <p><b>Evitar:</b> queso doble crema, licuados, jugos naturales y verdes, refrescos, gelatina y agua de sabor. Tampoco bebidas vegetales (almendra, coco, avena, soya) a menos que te las receten.</p>
@@ -561,9 +567,9 @@ details.notes p{margin:6px 0;font-size:.9rem}
 
 <dialog id="repDlg" aria-labelledby="rpT">
   <form method="dialog">
-    <div class="sheet-head"><h2 id="rpT">Reporte de comidas</h2><button type="button" class="btn second small" id="rpClose">Cerrar</button></div>
+    <div class="sheet-head"><h2 id="rpT">Reporte</h2><button type="button" class="btn second small" id="rpClose">Cerrar</button></div>
     <div class="seg" role="group" aria-label="Periodo del reporte">
-      <button type="button" data-rd="3">3 días</button><button type="button" data-rd="7">7 días</button><button type="button" data-rd="14">14 días</button>
+      <button type="button" data-rd="mes">Este mes</button><button type="button" data-rd="7">7 días</button><button type="button" data-rd="14">14 días</button>
     </div>
     <div class="two">
       <button type="button" class="btn small" id="rpShare">Compartir</button>
@@ -580,7 +586,7 @@ details.notes p{margin:6px 0;font-size:.9rem}
 
 /* ===== Datos ===== */
 /* Sube APP_VERSION en cada cambio que publiques */
-var APP_VERSION='3.6', APP_DATE='2026-10-04';
+var APP_VERSION='1.3.8', APP_DATE='2026-10-04';
 var KEY='mc1', CKEY='mccfg', API='https://api.github.com/gists/';
 var DEF_GIST='38d1ca0797bbf0eca2ea9cd981786b60'; /* Gist de CocoSalud */
 var DEF_MEDS=[
@@ -768,12 +774,42 @@ function addCustom(){var n=$('cName').value.trim(),q=$('cQty').value.trim();if(!
   if(addFood(fdMeal,fdGroup,n.charAt(0).toUpperCase()+n.slice(1),q||'')){$('cName').value='';$('cQty').value='';toast(n+' agregado');}}
 
 /* Reporte tipo tabla (como el de la nutrióloga) */
-var repDays=7;
-function reportDays(){var out=[],t=new Date();t.setHours(12,0,0,0);for(var i=repDays-1;i>=0;i--){var d=new Date(t);d.setDate(t.getDate()-i);var k=dkey(d);if(D.days[k]&&(hasFood(D.days[k])||hasTreats(D.days[k])))out.push(k);}return out;}
+var repMode='mes';
+function periodKeys(){var out=[],t=new Date();t.setHours(12,0,0,0);
+  if(repMode==='mes'){var d=new Date(t);d.setDate(1);while(dkey(d)<=dkey(t)){out.push(dkey(d));d.setDate(d.getDate()+1);}return out;}
+  for(var i=+repMode-1;i>=0;i--){var e=new Date(t);e.setDate(t.getDate()-i);out.push(dkey(e));}return out;}
+function periodName(){if(repMode==='mes'){var s=new Date().toLocaleDateString('es-MX',{month:'long',year:'numeric'});return cap1(s.replace(' de ',' '));}return 'Últimos '+repMode+' días';}
+function reportDays(){return periodKeys().filter(function(k){return D.days[k]&&(hasFood(D.days[k])||hasTreats(D.days[k]));});}
+function pct(a,b){return b?Math.round(a*100/b)+'%':'–';}
+/* Resumen del periodo: lo más importante en una tabla fácil de leer */
+function summaryRows(){
+  var ks=periodKeys(),all=sortedKeys(),first=all.length?all[0]:today(),act=ks.filter(function(k){return k>=first;}),n=act.length,rows=[];
+  var pk=act.filter(function(k){return D.days[k]&&D.days[k].peso!=null;});
+  if(pk.length){var p0=D.days[pk[0]].peso,p1=D.days[pk[pk.length-1]].peso,dl=+(p1-p0).toFixed(1);
+    rows.push(['Peso','<b>'+p1.toFixed(1)+' kg</b>',pk.length>1?(dl<0?'Bajaste '+Math.abs(dl).toFixed(1)+' kg':dl>0?'Subiste '+dl.toFixed(1)+' kg':'Sin cambio')+' (empezó en '+p0.toFixed(1)+' kg)':'Un solo registro']);
+    var b1=imc(p1);if(b1){var b0=imc(p0);rows.push(['IMC','<b>'+b1.toFixed(1)+'</b>',imcCat(b1)+(pk.length>1?'. Antes '+b0.toFixed(1):'')]);}}
+  else rows.push(['Peso','<b>–</b>','Sin registros']);
+  var need=0,got=0,per=[];D.cfg.meds.forEach(function(m){if(m.prn)return;var nd=0,gt=0;act.forEach(function(k){nd+=m.slots.length;gt+=Math.min(nTaken(D.days[k],m.id),m.slots.length);});need+=nd;got+=gt;per.push(m.name+' '+pct(gt,nd));});
+  rows.push(['Medicamentos','<b>'+pct(got,need)+'</b> de las tomas',got+' de '+need+' tomas. '+per.join(', ')]);
+  var wsum=0,wok=0;act.forEach(function(k){var v=D.days[k]&&D.days[k].agua||0;wsum+=v;if(v>=D.cfg.agua)wok++;});
+  rows.push(['Agua','<b>'+(n?fmtL(Math.round(wsum/n/50)*50):'–')+'</b> al día en promedio','Meta cumplida '+wok+' de '+n+' días ('+fmtL(D.cfg.agua)+')']);
+  var st=act.filter(function(k){return D.days[k]&&D.days[k].pasos;}).length;
+  rows.push(['10,000 pasos','<b>'+st+' de '+n+'</b> días',pct(st,n)+' de los días']);
+  var ft=0,fd=0;act.forEach(function(k){var t=foodTotals(D.days[k]);ft+=t.tot;fd+=t.dn;});
+  rows.push(['Plan de alimentación','<b>'+pct(fd,ft)+'</b> de las porciones',fd+' de '+ft+' porciones']);
+  var gs=[];act.forEach(function(k){(D.days[k]&&D.days[k].gl||[]).forEach(function(r){gs.push(r);});});
+  if(gs.length){var sum=0,ok=0;gs.forEach(function(r){sum+=r.v;if(glOk(r))ok++;});rows.push(['Glucosa','<b>'+Math.round(sum/gs.length)+' mg/dL</b> promedio',pct(ok,gs.length)+' en rango ('+gs.length+' mediciones)']);}
+  var tr=0;act.forEach(function(k){var t=D.days[k]&&D.days[k].treats;if(t)tr+=Object.keys(t).length;});
+  rows.push(['Prohibidos','<b>'+tr+'</b> en el periodo','Límite: '+TREAT_MAX+' por semana']);
+  return {rows:rows,days:n};}
+function summaryHtml(){var s=summaryRows(),h='<h3 class="sumttl">Resumen: '+esc(periodName())+'</h3><table class="sum"><tbody>';
+  s.rows.forEach(function(r){h+='<tr><td>'+r[0]+'</td><td>'+r[1]+'<span class="note">'+esc(r[2])+'</span></td></tr>';});
+  return h+'</tbody></table>';}
+function summaryText(){var s=summaryRows(),t='Resumen: '+periodName()+'\n';s.rows.forEach(function(r){t+='- '+r[0]+': '+r[1].replace(/<[^>]+>/g,'')+'. '+r[2]+'\n';});return t;}
 function dayTitle(k){var s=new Date(k+'T12:00:00').toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).replace(',','');return cap1(s);}
 function mealRows(x,mi){var rows=[];GROUPS.concat([LIBRES]).forEach(function(g){entries(x,mi,g.id).forEach(function(e){rows.push([e.f,entryQty(g.id,e)]);});});return rows;}
-function buildReport(){var ks=reportDays(),h='';
-  if(!ks.length)return '<p class="hint" style="margin-top:14px">No hay comidas registradas en estos días.</p>';
+function buildReport(){var ks=reportDays(),h=summaryHtml()+'<h3 class="sumttl">Comidas por día</h3>';
+  if(!ks.length)return h+'<p class="hint">No hay comidas registradas en estos días.</p>';
   ks.forEach(function(k){var x=D.days[k];h+='<h3>'+dayTitle(k)+'</h3><table><thead><tr><th>Tiempo</th><th>¿Qué comí?</th><th>Cantidad</th></tr></thead><tbody>';
     MEALS.forEach(function(mn,mi){var rows=mealRows(x,mi);if(!rows.length)return;
       h+='<tr><td>'+esc(mn)+'</td><td>'+rows.map(function(r){return esc(r[0]);}).join('<br>')+'</td><td class="cant">'+rows.map(function(r){return esc(r[1]);}).join('<br>')+'</td></tr>';});
@@ -781,16 +817,16 @@ function buildReport(){var ks=reportDays(),h='';
     h+='</tbody></table>';});
   return h;}
 function treatNames(x){return TREATS.filter(function(t){return x.treats&&x.treats[t.id];}).map(function(t){return t.n;});}
-function reportText(){var ks=reportDays(),t='Reporte de comidas\n';
+function reportText(){var ks=reportDays(),t='Reporte CocoSalud\n\n'+summaryText()+(ks.length?'\nComidas por día\n':'');
   ks.forEach(function(k){var x=D.days[k];t+='\n'+dayTitle(k)+'\n';MEALS.forEach(function(mn,mi){var rows=mealRows(x,mi);if(rows.length)t+=mn+': '+rows.map(function(r){return r[0]+' ('+r[1]+')';}).join(', ')+'\n';});var tr=treatNames(x);if(tr.length)t+='Prohibidos: '+tr.join(', ')+'\n';});
-  return ks.length?t:'';}
+  return t;}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
-function renderReport(){document.querySelectorAll('[data-rd]').forEach(function(b){b.setAttribute('aria-pressed',+b.dataset.rd===repDays?'true':'false');});$('repBody').innerHTML=buildReport();}
+function renderReport(){document.querySelectorAll('[data-rd]').forEach(function(b){b.setAttribute('aria-pressed',b.dataset.rd===String(repMode)?'true':'false');});$('repBody').innerHTML=buildReport();}
 function shareReport(){var t=reportText();if(!t){toast('No hay comidas en estos días');return;}
-  if(navigator.share)navigator.share({title:'Reporte de comidas',text:t}).catch(function(){});
+  if(navigator.share)navigator.share({title:'Reporte CocoSalud',text:t}).catch(function(){});
   else if(navigator.clipboard)navigator.clipboard.writeText(t).then(function(){toast('Reporte copiado');},function(){prompt('Copia el reporte:',t);});
   else prompt('Copia el reporte:',t);}
-function printReport(){var h=buildReport();$('printArea').innerHTML='<h2>Reporte de comidas</h2>'+h;$('repDlg').close();document.body.classList.add('printing');
+function printReport(){var h=buildReport();$('printArea').innerHTML='<h2>Reporte CocoSalud</h2>'+h;$('repDlg').close();document.body.classList.add('printing');
   setTimeout(function(){window.print();setTimeout(function(){document.body.classList.remove('printing');},500);},100);}
 
 function buildPlanEditor(){var P=D.cfg.plan,h='<table><thead><tr><th>Grupo</th>';
@@ -893,7 +929,8 @@ function render(){
   $('allsetTxt').textContent=sel===t?'Listo, ya tomaste todo lo de hoy.':'Ese día tomaste todo.';
   var sp=x.pasos;$('stepsBtn').setAttribute('aria-pressed',sp?'true':'false');
   $('stepsTxt').textContent=sp?('Listo'+(sp===true?'':', registrado a las '+sp)):'Toca cuando los completes';
-  renderEntry(x);renderWater(x);renderFood(x);renderTreats(x);renderStats();renderTodayStats();renderLabStats();renderCharts();renderMeds();renderLabs();
+  renderEntry(x);renderWater(x);renderFood(x);renderTreats(x);renderStats();renderTodayStats();renderLabStats();
+  if(!$('tab-prog').hidden){renderCharts();renderMeds();}if(!$('tab-est').hidden)renderLabs();if($('repDlg').open)renderReport();
 }
 
 function rlabel(){return range===90?'3 meses':range+' días';}
@@ -1139,13 +1176,18 @@ function copySetupLink(){var tok=$('cTok').value.trim(),gist=$('cGist').value.tr
 /* Revisa si hay una versión publicada más nueva y recarga (iPhone guarda en caché la app de la pantalla de inicio) */
 function checkUpdate(manual){
   if(!/^https?:/.test(location.protocol))return;
-  fetch(location.href.split('#')[0],{cache:'reload'}).then(function(r){return r.ok?r.text():'';}).then(function(t){
+  /* Pide la versión publicada con una dirección única para saltarse la caché del teléfono y de GitHub */
+  fetch(location.pathname+'?chk='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():'';}).then(function(t){
     var m=t.match(/APP_VERSION='([^']+)'/);if(!m)return;var v=m[1];
     if(v===APP_VERSION){if(manual)toast('Ya tienes la versión más reciente ('+v+')');return;}
     var tried=null;try{tried=sessionStorage.getItem('updTried');}catch(e){}
-    if(tried!==v){try{sessionStorage.setItem('updTried',v);}catch(e){}toast('Actualizando a la versión '+v);setTimeout(function(){location.reload();},700);}
-    else toast('Hay una versión nueva ('+v+'). Cierra la app por completo y ábrela de nuevo');
+    if(tried===v){if(manual)toast('Hay una versión nueva ('+v+'). Cierra la app y ábrela de nuevo');return;}
+    try{sessionStorage.setItem('updTried',v);}catch(e){}
+    toast('Actualizando a la versión '+v);
+    /* Abrir una dirección nueva (?v=...) obliga al teléfono a descargar la página otra vez */
+    setTimeout(function(){location.replace(location.pathname+'?v='+encodeURIComponent(v));},800);
   }).catch(function(){if(manual)toast('Sin conexión para buscar actualizaciones');});}
+setInterval(function(){if(!document.hidden)checkUpdate(false);},5*60*1000);
 var tt;function toast(m){var t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(function(){t.classList.remove('show');},3000);}
 
 /* ===== Eventos ===== */
@@ -1159,7 +1201,7 @@ $('cName').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventD
 $('foodForm').addEventListener('submit',function(e){e.preventDefault();});
 $('btnReport').onclick=function(){renderReport();$('repDlg').showModal();};
 $('rpClose').onclick=function(){$('repDlg').close();};
-document.querySelectorAll('[data-rd]').forEach(function(b){b.onclick=function(){repDays=+b.dataset.rd;renderReport();};});
+document.querySelectorAll('[data-rd]').forEach(function(b){b.onclick=function(){repMode=b.dataset.rd;renderReport();};});
 $('rpShare').onclick=shareReport;$('rpPrint').onclick=printReport;
 $('waterPlus').onclick=function(){addWater(250);};
 $('waterLiter').onclick=function(){addWater(1000);};
@@ -1194,13 +1236,14 @@ $('btnBackup').onclick=backup;
 $('btnRestore').onclick=function(){$('fileRestore').click();};
 $('fileRestore').onchange=function(){restore(this.files[0]);this.value='';};
 document.addEventListener('visibilitychange',function(){if(!document.hidden){tick();cloudLoad();checkUpdate(false);}});
-if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',function(){renderCharts();renderMeds();renderLabs();});
+if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',function(){if(!$('tab-prog').hidden){renderCharts();renderMeds();}if(!$('tab-est').hidden)renderLabs();});
 
 $('glucT').value=nowHM();
 $('ver').textContent='CocoSalud versión '+APP_VERSION+', publicada el '+new Date(APP_DATE+'T12:00:00').toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'});
 $('vtag').textContent='Versión '+APP_VERSION;
 setupFromLink();buildLabs();render();cloudLoad();checkUpdate(false);
 window.__appOk=true;
+window.__chartReady=function(){if(!$('tab-prog').hidden)renderCharts();if(!$('tab-est').hidden)renderLabs();};if(typeof Chart!=='undefined')window.__chartReady();
 
 </script>
 </body>
