@@ -115,7 +115,7 @@ p{margin:0}
 .bigin{display:flex;align-items:center;border:2px solid var(--line);border-radius:14px;background:var(--field);padding:0 14px;min-height:56px}
 .bigin:focus-within{border-color:var(--brand)}
 .bigin input{flex:1;min-width:0;width:100%;border:0;background:none;padding:8px 0;font-size:1.55rem;font-weight:700;outline:none}
-.bigin input::placeholder{color:var(--muted);opacity:.6;font-weight:400}
+.bigin input::placeholder{color:var(--muted);opacity:.75;font-weight:400;font-size:1.05rem}
 .bigin span{font-size:.95rem;color:var(--muted);font-weight:700}
 .bigin.locked{background:var(--ok-soft);border-color:var(--ok)}
 .bigin.locked input{color:var(--ok)}
@@ -256,8 +256,13 @@ dialog input[type=text],dialog input[type=password]{width:100%;font-size:1rem;pa
     </section>
 
     <section class="card">
+      <h2 style="margin-bottom:12px">Actividad</h2>
+      <button class="med" id="stepsBtn" aria-pressed="false"><span class="tick"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span class="mtxt"><span class="mname">Caminé 10,000 pasos</span><span class="mwhen" id="stepsTxt"></span></span></button>
+    </section>
+
+    <section class="card">
       <h2>Peso</h2>
-      <div class="bigin" id="pesoBox" style="margin-top:12px"><input id="peso" aria-label="Peso en kilos" type="text" inputmode="decimal" placeholder="78.4" autocomplete="off"><span>kg</span></div>
+      <div class="bigin" id="pesoBox" style="margin-top:12px"><input id="peso" aria-label="Peso en kilos" type="text" inputmode="decimal" placeholder="Escribe tu peso" autocomplete="off"><span>kg</span></div>
       <div class="status" id="pesoInfo"></div>
       <button class="btn" id="btnPeso">Guardar peso</button>
     </section>
@@ -271,7 +276,7 @@ dialog input[type=text],dialog input[type=password]{width:100%;font-size:1rem;pa
         <button class="mom" data-m="2 h después de comer">Después de comer</button>
         <button class="mom" data-m="Antes de dormir">Antes de dormir</button>
       </div>
-      <div class="bigin" id="glucBox" style="margin-top:10px"><input id="gluc" aria-label="Resultado de glucosa" type="text" inputmode="numeric" placeholder="96" autocomplete="off"><span>mg/dL</span></div>
+      <div class="bigin" id="glucBox" style="margin-top:10px"><input id="gluc" aria-label="Resultado de glucosa" type="text" inputmode="numeric" placeholder="Escribe el resultado" autocomplete="off"><span>mg/dL</span></div>
       <div class="timerow"><label for="glucT">Hora</label><input id="glucT" type="time"></div>
       <div class="status" id="glInfo"></div>
       <button class="btn" id="btnGluc">Guardar glucosa</button>
@@ -306,7 +311,7 @@ dialog input[type=text],dialog input[type=password]{width:100%;font-size:1rem;pa
       <p class="hint" id="glucHint" style="margin-top:10px"></p>
     </section>
     <section class="card">
-      <h3>Cómo vas con tus medicamentos</h3>
+      <h3>Cómo vas cada día</h3>
       <div id="meds"></div>
       <p class="hint" style="margin-top:8px">Cada bolita es un día. Llena: tomaste todo. Mitad: solo una parte.</p>
     </section>
@@ -406,7 +411,7 @@ dialog input[type=text],dialog input[type=password]{width:100%;font-size:1rem;pa
 
 /* ===== Datos ===== */
 /* Sube APP_VERSION en cada cambio que publiques */
-var APP_VERSION='2.3', APP_DATE='2026-10-04';
+var APP_VERSION='2.4', APP_DATE='2026-10-04';
 var KEY='mc1', CKEY='mccfg', API='https://api.github.com/gists/';
 var DEF_GIST='38d1ca0797bbf0eca2ea9cd981786b60'; /* Gist de CocoSalud */
 var DEF_MEDS=[
@@ -440,7 +445,7 @@ function day(k){if(!D.days[k])D.days[k]={gl:[]};if(!D.days[k].gl)D.days[k].gl=[]
 function taken(x,id,si){return !!(x&&x.md&&x.md[id]&&x.md[id][si]);}
 function nTaken(x,id){return x&&x.md&&x.md[id]?Object.keys(x.md[id]).length:0;}
 function hasMd(x){return !!(x.md&&Object.keys(x.md).length);}
-function cleanDay(k){var x=D.days[k];if(x&&x.peso==null&&!hasMd(x)&&(!x.gl||!x.gl.length))delete D.days[k];}
+function cleanDay(k){var x=D.days[k];if(x&&x.peso==null&&!hasMd(x)&&!x.pasos&&(!x.gl||!x.gl.length))delete D.days[k];}
 function mcol(i){return 'var(--m'+(i%4+1)+')';}
 function mlabel(m){return nice(m.name)+(m.dose?' '+m.dose:'');}
 function nice(n){return n.replace(/\//g,'/\u200b');}
@@ -458,6 +463,7 @@ function glOk(r){var c=D.cfg;return r.m==='2 h después de comer'?(r.v>=c.gmin&&
 function toggleMed(id,si){var x=day(sel);x.md=x.md||{};var m=x.md[id]=x.md[id]||{};
   if(m[si])delete m[si];else m[si]=sel===today()?nowHM():true;
   if(!Object.keys(m).length)delete x.md[id];if(!hasMd(x))delete x.md;cleanDay(sel);persist();}
+function toggleSteps(){var x=day(sel);if(x.pasos)delete x.pasos;else x.pasos=sel===today()?nowHM():true;cleanDay(sel);persist();if(x.pasos)toast('¡Bien! 10,000 pasos registrados');}
 function savePeso(){var v=num($('peso').value);if(!(v>=20&&v<=400)){toast('Revisa el peso: debe estar entre 20 y 400 kg');return;}day(sel).peso=Math.round(v*10)/10;editPeso=false;persist();toast('Peso guardado');}
 function saveGluc(){var v=num($('gluc').value);if(!(v>=20&&v<=600)){toast('Revisa la glucosa: debe estar entre 20 y 600');return;}
   var t=$('glucT').value||nowHM(),x=day(sel);x.gl.push({t:t,v:Math.round(v),m:glM});x.gl.sort(function(a,b){return a.t<b.t?-1:1;});
@@ -549,6 +555,8 @@ function render(){
   $('medbar').setAttribute('aria-valuemax',tot);$('medbar').setAttribute('aria-valuenow',dn);
   $('mbFill').style.width=(tot?dn*100/tot:0)+'%';$('mbTxt').textContent=tot?dn+' de '+tot:'';
   $('allsetTxt').textContent=sel===t?'Listo, ya tomaste todo lo de hoy.':'Ese día tomaste todo.';
+  var sp=x.pasos;$('stepsBtn').setAttribute('aria-pressed',sp?'true':'false');
+  $('stepsTxt').textContent=sp?('Listo'+(sp===true?'':', registrado a las '+sp)):'Toca cuando los completes';
   renderEntry(x);renderStats();renderLabStats();renderCharts();renderMeds();renderLabs();
 }
 
@@ -630,6 +638,12 @@ function renderMeds(){
     if(m.prn){p.className='pct';p.textContent=used+(used===1?' día':' días');p.appendChild(el('small','','la usaste'));}
     else{p.className='pct';p.textContent=days?Math.round(got*100/(days*need))+'%':'–';p.appendChild(el('small','',got+' de '+(days*need)+' tomas'));}
     mh.appendChild(nm);mh.appendChild(p);row.appendChild(mh);row.appendChild(dots);box.appendChild(row);});
+  var row2=el('div','mrow');row2.style.setProperty('--c','var(--peso)');var mh2=el('div','mh'),dots2=el('div','dots'),dd=0,on2=0;
+  rk.forEach(function(k){var d=el('span','dot'),x=D.days[k],ok=!!(x&&x.pasos);
+    if(k<first)d.className+=' na';else{dd++;if(ok){on2++;d.className+=' on';}}if(k===t)d.className+=' today';
+    d.title=fShort(k)+(ok?': 10,000 pasos':'');dots2.appendChild(d);});
+  var p2=el('span','pct',dd?Math.round(on2*100/dd)+'%':'–');p2.appendChild(el('small','',on2+' de '+dd+' días'));
+  mh2.appendChild(el('span','ml','10,000 pasos'));mh2.appendChild(p2);row2.appendChild(mh2);row2.appendChild(dots2);box.appendChild(row2);
 }
 
 function fDate(k){return new Date(k+'T12:00:00').toLocaleDateString('es-MX',{day:'numeric',month:'short',year:'numeric'});}
@@ -769,6 +783,7 @@ var tt;function toast(m){var t=$('toast');t.textContent=m;t.classList.add('show'
 
 /* ===== Eventos ===== */
 $('addMed').onclick=function(){var r=medRow({});$('medEd').appendChild(r);r.querySelector('.mN').focus();};
+$('stepsBtn').onclick=toggleSteps;
 $('btnPeso').onclick=function(){var x=D.days[sel];if(x&&x.peso!=null&&!editPeso){editPeso=true;render();$('peso').focus();$('peso').select();}else savePeso();};
 $('btnGluc').onclick=function(){var x=D.days[sel];if(x&&x.gl&&x.gl.length&&!newGl){newGl=true;render();$('gluc').focus();}else saveGluc();};$('btnLab').onclick=saveLab;
 $('peso').addEventListener('keydown',function(e){if(e.key==='Enter'&&!this.readOnly)savePeso();});
