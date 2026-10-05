@@ -155,6 +155,7 @@ p{margin:0}
 .stat .s{font-size:.85rem;color:var(--muted)}
 .stat .s.out{color:var(--bad);font-weight:700}
 button.stat{font:inherit;color:inherit;text-align:left;cursor:pointer;width:100%;display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch}
+.secttl{margin:4px 2px -4px;font-size:1rem;color:var(--muted)}
 .stat .s.ok{color:var(--ok);font-weight:700}
 .chart{position:relative;height:260px}
 .chart.sm{height:220px;margin:14px 0 8px}
@@ -322,7 +323,7 @@ details.notes p{margin:6px 0;font-size:.9rem}
   </div>
 
   <!-- ===== HOY ===== -->
-  <section class="tab" id="tab-hoy" role="tabpanel" aria-labelledby="t-hoy">
+  <section class="tab" id="tab-hoy" role="tabpanel" aria-labelledby="t-hoy" hidden>
     <nav class="daynav" aria-label="Día que estás registrando">
       <button class="navbtn" id="prevDay" aria-label="Día anterior"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
       <button class="daytitle" id="dayGo"><span class="dt1" id="dt1"></span><span class="dt2" id="dt2"></span><span class="dt3" id="dt3"></span></button>
@@ -402,7 +403,10 @@ details.notes p{margin:6px 0;font-size:.9rem}
   </section>
 
   <!-- ===== PROGRESO ===== -->
-  <section class="tab" id="tab-prog" role="tabpanel" aria-labelledby="t-prog" hidden>
+  <section class="tab" id="tab-prog" role="tabpanel" aria-labelledby="t-prog">
+    <h2 class="secttl" id="todayTtl">Hoy</h2>
+    <div class="stats" id="todayStats"></div>
+    <h2 class="secttl">Tu avance</h2>
     <div class="seg" role="group" aria-label="Periodo">
       <button class="chip" data-r="7">7 días</button>
       <button class="chip" data-r="30">30 días</button>
@@ -451,8 +455,8 @@ details.notes p{margin:6px 0;font-size:.9rem}
 </main>
 
 <nav class="tabbar" role="tablist" aria-label="Secciones">
-  <button role="tab" id="t-hoy" data-tab="hoy" aria-selected="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Hoy</button>
-  <button role="tab" id="t-prog" data-tab="prog" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16"/><path d="M7.5 14.5l3.5-4 3 2.5 5-6"/></svg>Mi progreso</button>
+  <button role="tab" id="t-prog" data-tab="prog" aria-selected="true"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16"/><path d="M7.5 14.5l3.5-4 3 2.5 5-6"/></svg>Mi progreso</button>
+  <button role="tab" id="t-hoy" data-tab="hoy" aria-selected="false"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Hoy</button>
   <button role="tab" id="t-est" data-tab="est" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M9 3h6M10 3v6.5L5.2 18a2 2 0 0 0 1.8 3h10a2 2 0 0 0 1.8-3L14 9.5V3"/><path d="M7.5 14.5h9"/></svg>Estudios</button>
 </nav>
 
@@ -566,7 +570,7 @@ details.notes p{margin:6px 0;font-size:.9rem}
 
 /* ===== Datos ===== */
 /* Sube APP_VERSION en cada cambio que publiques */
-var APP_VERSION='3.4', APP_DATE='2026-10-04';
+var APP_VERSION='3.5', APP_DATE='2026-10-04';
 var KEY='mc1', CKEY='mccfg', API='https://api.github.com/gists/';
 var DEF_GIST='38d1ca0797bbf0eca2ea9cd981786b60'; /* Gist de CocoSalud */
 var DEF_MEDS=[
@@ -879,7 +883,7 @@ function render(){
   $('allsetTxt').textContent=sel===t?'Listo, ya tomaste todo lo de hoy.':'Ese día tomaste todo.';
   var sp=x.pasos;$('stepsBtn').setAttribute('aria-pressed',sp?'true':'false');
   $('stepsTxt').textContent=sp?('Listo'+(sp===true?'':', registrado a las '+sp)):'Toca cuando los completes';
-  renderEntry(x);renderWater(x);renderFood(x);renderTreats(x);renderStats();renderLabStats();renderCharts();renderMeds();renderLabs();
+  renderEntry(x);renderWater(x);renderFood(x);renderTreats(x);renderStats();renderTodayStats();renderLabStats();renderCharts();renderMeds();renderLabs();
 }
 
 function rlabel(){return range===90?'3 meses':range+' días';}
@@ -999,6 +1003,25 @@ function buildLabs(){
       '<p class="hint" id="lH_'+l.id+'"></p><ul class="list" id="lL_'+l.id+'"></ul>';
     b.querySelector('h3').textContent=l.name;b.querySelector('.empty').textContent='Guarda tu próximo resultado de '+l.short.toLowerCase()+' para ver cómo evoluciona.';
     blk.appendChild(b);});
+}
+function setSub(n){document.querySelectorAll('[data-sub]').forEach(function(o){o.setAttribute('aria-pressed',o.dataset.sub===n?'true':'false');});
+  $('sub-salud').hidden=n!=='salud';$('sub-ali').hidden=n!=='ali';}
+function goHoy(sub){if(sel!==today())goDay(today());showTab('hoy');setSub(sub);}
+function renderTodayStats(){
+  var t=today(),x=D.days[t]||{},box=$('todayStats');box.innerHTML='';
+  $('todayTtl').textContent='Hoy, '+new Date(t+'T12:00:00').toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long'});
+  function card(col,k,v,unit,sub,cls,sub2){var c=el('button','stat');c.style.setProperty('--c',col);c.appendChild(el('div','k',k));
+    var vv=el('div','v',v);if(unit)vv.appendChild(el('small','',unit));c.appendChild(vv);if(sub)c.appendChild(el('div','s'+(cls?' '+cls:''),sub));
+    c.onclick=function(){goHoy(sub2);};box.appendChild(c);}
+  var ft=foodTotals(x),fc=0;MEALS.forEach(function(m,mi){GROUPS.forEach(function(g){fc+=freeCount(x,mi,g.id);});});
+  var done=ft.tot&&ft.dn>=ft.tot;
+  card('var(--m2)','Porciones',String(ft.dn),'de '+ft.tot,(done?'✓ Plan completo':'Te faltan '+Math.max(0,ft.tot-ft.dn))+(fc?'. Más '+fc+(fc===1?' libre':' libres'):''),done?'ok':'','ali');
+  var w=x.agua||0,goal=D.cfg.agua;
+  card('#3B8FD9','Agua',fmtL(w).replace(' L',''),'de '+fmtL(goal),w>=goal?'✓ Meta cumplida':'Te faltan '+fmtL(goal-w),w>=goal?'ok':'','ali');
+  var n=weekTreats(t);
+  card(n>TREAT_MAX?'var(--bad)':'var(--m3)','Prohibidos',String(n),'de '+TREAT_MAX,n>TREAT_MAX?'Te pasaste por '+(n-TREAT_MAX)+' esta semana':n===TREAT_MAX?'Llegaste al límite de la semana':'Esta semana. Te quedan '+(TREAT_MAX-n),n>=TREAT_MAX?'out':'','ali');
+  var st=!!x.pasos;
+  card(st?'var(--ok)':'var(--peso)','10,000 pasos',st?'✓':'–',st?'logrado':'pendiente',st?'Ya los marcaste hoy':'Todavía no los marcas',st?'ok':'','salud');
 }
 function renderLabStats(){
   var box=$('labStats');box.innerHTML='';
@@ -1131,9 +1154,7 @@ $('rpShare').onclick=shareReport;$('rpPrint').onclick=printReport;
 $('waterPlus').onclick=function(){addWater(250);};
 $('waterLiter').onclick=function(){addWater(1000);};
 $('waterMinus').onclick=function(){addWater(-250);};
-document.querySelectorAll('[data-sub]').forEach(function(b){b.onclick=function(){var n=b.dataset.sub;
-  document.querySelectorAll('[data-sub]').forEach(function(o){o.setAttribute('aria-pressed',o===b?'true':'false');});
-  $('sub-salud').hidden=n!=='salud';$('sub-ali').hidden=n!=='ali';};});
+document.querySelectorAll('[data-sub]').forEach(function(b){b.onclick=function(){setSub(b.dataset.sub);};});
 $('btnPeso').onclick=function(){var x=D.days[sel];if(x&&x.peso!=null&&!editPeso){editPeso=true;render();$('peso').focus();$('peso').select();}else savePeso();};
 $('btnGluc').onclick=function(){var x=D.days[sel];if(x&&x.gl&&x.gl.length&&!newGl){newGl=true;render();$('gluc').focus();}else saveGluc();};$('btnLab').onclick=saveLab;
 $('peso').addEventListener('keydown',function(e){if(e.key==='Enter'&&!this.readOnly)savePeso();});
@@ -1152,24 +1173,4 @@ $('cfgLink').onclick=copySetupLink;
 $('pinForm').addEventListener('submit',function(e){e.preventDefault();checkPin();});
 $('pinIn').addEventListener('input',function(){this.value=this.value.replace(/\D/g,'').slice(0,4);$('pinErr').textContent='';if(this.value.length===4)checkPin();});
 $('pinCancel').onclick=function(){$('pinDlg').close();};
-$('cfgCancel').onclick=$('cfgCancel2').onclick=function(){$('cfg').close();};
-document.querySelectorAll('.mom').forEach(function(b){b.onclick=function(){if(b.disabled)return;glM=b.dataset.m;setMoments(glM,false);};});
-function showTab(n){['hoy','prog','est'].forEach(function(k){$('tab-'+k).hidden=k!==n;$('t-'+k).setAttribute('aria-selected',k===n?'true':'false');});
-  window.scrollTo(0,0);if(n==='prog'){renderLabStats();renderCharts();renderMeds();}if(n==='est')renderLabs();}
-$('goEst').onclick=function(){showTab('est');};
-document.querySelectorAll('.tabbar button').forEach(function(b){b.onclick=function(){showTab(b.dataset.tab);};});
-$('cfgForm').addEventListener('submit',function(){saveCfg();});
-$('btnBackup').onclick=backup;
-$('btnRestore').onclick=function(){$('fileRestore').click();};
-$('fileRestore').onchange=function(){restore(this.files[0]);this.value='';};
-document.addEventListener('visibilitychange',function(){if(!document.hidden){tick();cloudLoad();checkUpdate(false);}});
-if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',function(){renderCharts();renderMeds();renderLabs();});
-
-$('glucT').value=nowHM();
-$('ver').textContent='CocoSalud versión '+APP_VERSION+', publicada el '+new Date(APP_DATE+'T12:00:00').toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'});
-$('vtag').textContent='Versión '+APP_VERSION;
-setupFromLink();buildLabs();render();cloudLoad();checkUpdate(false);
-
-</script>
-</body>
-</html>
+$('cfgCancel').onclick=$('c
