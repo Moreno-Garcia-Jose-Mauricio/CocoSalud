@@ -449,6 +449,11 @@ details.notes p{margin:6px 0;font-size:.9rem}
       <p class="hint" id="glucHint" style="margin-top:10px"></p>
     </section>
     <section class="card">
+      <h3>Alimentos prohibidos por día</h3>
+      <div class="chart"><canvas id="chTreat"></canvas><div class="empty" id="eTreat">Cuando marques un alimento prohibido, aquí verás cuántos comiste cada día.</div></div>
+      <p class="hint" id="treatHint" style="margin-top:10px"></p>
+    </section>
+    <section class="card">
       <h3>Cómo vas cada día</h3>
       <div id="meds"></div>
       <p class="hint" style="margin-top:8px">Cada bolita es un día. Llena: tomaste todo. Mitad: solo una parte.</p>
@@ -586,7 +591,7 @@ details.notes p{margin:6px 0;font-size:.9rem}
 
 /* ===== Datos ===== */
 /* Sube APP_VERSION en cada cambio que publiques */
-var APP_VERSION='1.3.8', APP_DATE='2026-10-04';
+var APP_VERSION='1.3.9', APP_DATE='2026-10-27';
 var KEY='mc1', CKEY='mccfg', API='https://api.github.com/gists/';
 var DEF_GIST='38d1ca0797bbf0eca2ea9cd981786b60'; /* Gist de CocoSalud */
 var DEF_MEDS=[
@@ -993,6 +998,23 @@ function renderCharts(){
       {label:'Mínimo',data:pts.map(function(){return D.cfg.gmin;}),borderColor:mu,borderDash:[4,4],borderWidth:1,pointRadius:0},
       {label:'Máximo',data:pts.map(function(){return D.cfg.gmax;}),borderColor:mu,borderDash:[4,4],borderWidth:1,pointRadius:0}
     ]},options:o2});
+  }
+  /* Alimentos prohibidos por día: en rojo los que ya pasan el límite de la semana */
+  function nTreat(k){var x=D.days[k];return x&&x.treats?Object.keys(x.treats).length:0;}
+  var tn=rk.map(nTreat),tover=rk.map(function(k,i){var acc=0;weekKeys(k).forEach(function(kk){if(kk<=k)acc+=nTreat(kk);});return tn[i]>0&&acc>TREAT_MAX;});
+  var tsum=tn.reduce(function(a,b){return a+b;},0);
+  $('eTreat').hidden=tsum>0;
+  $('treatHint').textContent=tsum?'Comiste '+tsum+(tsum===1?' alimento prohibido':' alimentos prohibidos')+' en '+rlabel()+'. Las barras rojas son los días en que ya pasaste el límite de '+TREAT_MAX+' por semana.':'';
+  if(!tsum){if(charts.chTreat){charts.chTreat.destroy();delete charts.chTreat;}}
+  else{
+    var tc=css('--m3'),tb=css('--bad'),o3=baseOpts();
+    o3.scales.y={beginAtZero:true,suggestedMax:TREAT_MAX,grid:{color:grid},ticks:{stepSize:1,precision:0},title:{display:true,text:'Alimentos'}};
+    o3.plugins.legend.display=false;
+    o3.plugins.tooltip.callbacks={label:function(i){return i.raw+(i.raw===1?' alimento prohibido':' alimentos prohibidos');},
+      afterLabel:function(i){var x=D.days[rk[i.dataIndex]];return x?treatNames(x):[];}};
+    mk('chTreat',{type:'bar',data:{labels:rk.map(fShort),datasets:[
+      {label:'Alimentos prohibidos',data:tn,backgroundColor:tover.map(function(o){return o?tb:tc;}),borderRadius:6,maxBarThickness:28}
+    ]},options:o3});
   }
 }
 
