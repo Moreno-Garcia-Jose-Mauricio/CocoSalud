@@ -182,6 +182,15 @@ button.stat{font:inherit;color:inherit;text-align:left;cursor:pointer;width:100%
 .dot.half{background:linear-gradient(90deg,var(--c) 50%,transparent 50%);opacity:1}
 .dot.na{border-style:dotted;opacity:.2}
 .dot.today{outline:2px solid var(--ink);outline-offset:1px}
+/* Calendario de alimentos prohibidos: una fila por semana */
+.tweek .pct.out{color:var(--bad)}
+.tdays{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.tday{display:grid;gap:3px;text-align:center;font-size:.78rem;color:var(--muted)}
+.tday b{display:grid;place-items:center;min-height:44px;border:2px solid var(--line);border-radius:10px;font-size:1.05rem;line-height:1.1;color:var(--muted);font-weight:400;overflow-wrap:anywhere}
+.tday.on b{border-color:var(--m3);color:var(--ink)}
+.tday.over b{border-color:var(--bad);background:var(--bad-soft);color:var(--ink)}
+.tday.na{opacity:.35}
+.tday.today b{outline:2px solid var(--ink);outline-offset:1px}
 
 /* Estudios */
 .field label{display:block;font-weight:700;font-size:.92rem;margin-bottom:5px}
@@ -450,8 +459,8 @@ details.notes p{margin:6px 0;font-size:.9rem}
     </section>
     <section class="card">
       <h3>Alimentos prohibidos por día</h3>
-      <div class="chart"><canvas id="chTreat"></canvas><div class="empty" id="eTreat">Cuando marques un alimento prohibido, aquí verás cuántos comiste cada día.</div></div>
-      <p class="hint" id="treatHint" style="margin-top:10px"></p>
+      <div id="treatCal"></div>
+      <p class="hint" id="treatHint" style="margin-top:8px"></p>
     </section>
     <section class="card">
       <h3>Cómo vas cada día</h3>
@@ -999,26 +1008,31 @@ function renderCharts(){
       {label:'Máximo',data:pts.map(function(){return D.cfg.gmax;}),borderColor:mu,borderDash:[4,4],borderWidth:1,pointRadius:0}
     ]},options:o2});
   }
-  /* Alimentos prohibidos por día: en rojo los que ya pasan el límite de la semana */
+}
+
+/* Alimentos prohibidos: calendario por semana (la más reciente arriba); en rojo los días que ya pasan el límite */
+var WD=['L','M','M','J','V','S','D'];
+function renderTreatCal(){
+  var rk=rangeKeys(),t=today(),box=$('treatCal');box.innerHTML='';
   function nTreat(k){var x=D.days[k];return x&&x.treats?Object.keys(x.treats).length:0;}
-  var tn=rk.map(nTreat),tover=rk.map(function(k,i){var acc=0;weekKeys(k).forEach(function(kk){if(kk<=k)acc+=nTreat(kk);});return tn[i]>0&&acc>TREAT_MAX;});
-  var tsum=tn.reduce(function(a,b){return a+b;},0);
-  $('eTreat').hidden=tsum>0;
-  $('treatHint').textContent=tsum?'Comiste '+tsum+(tsum===1?' alimento prohibido':' alimentos prohibidos')+' en '+rlabel()+'. Las barras rojas son los días en que ya pasaste el límite de '+TREAT_MAX+' por semana.':'';
-  if(!tsum){if(charts.chTreat){charts.chTreat.destroy();delete charts.chTreat;}}
-  else{
-    var tc=css('--m3'),tb=css('--bad'),o3=baseOpts();
-    o3.scales.y={beginAtZero:true,suggestedMax:TREAT_MAX,grid:{color:grid},ticks:{stepSize:1,precision:0},title:{display:true,text:'Alimentos'}};
-    o3.plugins.legend.display=false;
-    o3.plugins.tooltip.callbacks={label:function(i){return i.raw+(i.raw===1?' alimento prohibido':' alimentos prohibidos');},
-      afterLabel:function(i){var x=D.days[rk[i.dataIndex]];return x?treatNames(x):[];}};
-    mk('chTreat',{type:'bar',data:{labels:rk.map(fShort),datasets:[
-      {label:'Alimentos prohibidos',data:tn,backgroundColor:tover.map(function(o){return o?tb:tc;}),borderRadius:6,maxBarThickness:28}
-    ]},options:o3});
-  }
+  var weeks=[],w=weekKeys(rk[0])[0];while(w<=t){weeks.unshift(weekKeys(w));var d=new Date(w+'T12:00:00');d.setDate(d.getDate()+7);w=dkey(d);}
+  var tsum=0;
+  weeks.forEach(function(wk){var acc=0,tot=wk.reduce(function(a,k){return a+nTreat(k);},0),row=el('div','mrow tweek'),mh=el('div','mh'),days=el('div','tdays');
+    wk.forEach(function(k,i){var n=nTreat(k),x=D.days[k],c=el('div','tday'),b=document.createElement('b');acc+=n;
+      if(k<rk[0]||k>t)c.className+=' na';else tsum+=n;
+      if(n)c.className+=acc>TREAT_MAX?' over':' on';if(k===t)c.className+=' today';
+      b.textContent=n?TREATS.filter(function(o){return x.treats[o.id];}).map(function(o){return o.i;}).join(''):'–';
+      c.title=fShort(k)+(n?': '+treatNames(x).join(', '):': ninguno');
+      c.appendChild(el('span','',WD[i]+' '+(+k.slice(8))));c.appendChild(b);days.appendChild(c);});
+    var p=el('span','pct'+(tot>TREAT_MAX?' out':''),tot+' de '+TREAT_MAX);
+    p.appendChild(el('small','',tot>TREAT_MAX?'Te pasaste por '+(tot-TREAT_MAX):tot===TREAT_MAX?'Llegaste al límite':wk[6]<t?'Bien, no pasaste el límite':'Te '+(TREAT_MAX-tot===1?'queda ':'quedan ')+(TREAT_MAX-tot)));
+    mh.appendChild(el('span','ml',wk[0]<=t&&t<=wk[6]?'Esta semana':'Semana del '+fNice(wk[0])));mh.appendChild(p);
+    row.appendChild(mh);row.appendChild(days);box.appendChild(row);});
+  $('treatHint').textContent=(tsum?'Comiste '+tsum+(tsum===1?' alimento prohibido':' alimentos prohibidos')+' en '+rlabel()+'. ':'No comiste alimentos prohibidos en '+rlabel()+'. ¡Muy bien! ')+'Límite: '+TREAT_MAX+' por semana. En rojo, los días en que ya te habías pasado.';
 }
 
 function renderMeds(){
+  renderTreatCal();
   var box=$('meds');box.innerHTML='';var rk=rangeKeys(),t=today(),ks=sortedKeys(),first=ks.length?ks[0]:t;
   D.cfg.meds.forEach(function(m,i){
     var row=el('div','mrow');row.style.setProperty('--c',mcol(i));var mh=el('div','mh');
