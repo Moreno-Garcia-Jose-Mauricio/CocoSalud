@@ -191,6 +191,18 @@ button.stat{font:inherit;color:inherit;text-align:left;cursor:pointer;width:100%
 .tday.over b{border-color:var(--bad);background:var(--bad-soft);color:var(--ink)}
 .tday.na{opacity:.35}
 .tday.today b{outline:2px solid var(--ink);outline-offset:1px}
+.tday .tg{min-height:1.2em;color:var(--gluc);font-weight:700}
+.tday .tg.out{color:var(--bad)}
+/* Indicador: ¿los alimentos prohibidos te suben la glucosa? */
+.treatgl{margin:6px 0 4px;padding:12px;border-radius:12px;background:var(--field);display:grid;gap:8px}
+.treatgl .tv{font-weight:700;font-size:1.02rem}
+.treatgl.bad{background:var(--bad-soft)}.treatgl.bad .tv{color:var(--bad)}
+.treatgl.warn{background:var(--warn-soft)}.treatgl.warn .tv{color:var(--warn)}
+.treatgl.good{background:var(--ok-soft)}.treatgl.good .tv{color:var(--ok)}
+.tcmp{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tcmp div{background:var(--surface);border-radius:10px;padding:8px 10px;font-size:.85rem;color:var(--muted)}
+.tcmp b{display:block;font-size:1.25rem;color:var(--ink)}
+.treatgl .hint{margin:0;font-size:.82rem}
 
 /* Estudios */
 .field label{display:block;font-weight:700;font-size:.92rem;margin-bottom:5px}
@@ -459,6 +471,7 @@ details.notes p{margin:6px 0;font-size:.9rem}
     </section>
     <section class="card">
       <h3>Alimentos prohibidos por día</h3>
+      <div class="treatgl" id="treatGl"></div>
       <div id="treatCal"></div>
       <p class="hint" id="treatHint" style="margin-top:8px"></p>
     </section>
@@ -600,7 +613,7 @@ details.notes p{margin:6px 0;font-size:.9rem}
 
 /* ===== Datos ===== */
 /* Sube APP_VERSION en cada cambio que publiques */
-var APP_VERSION='1.3.10', APP_DATE='2026-10-27';
+var APP_VERSION='1.3.11', APP_DATE='2026-10-27';
 var KEY='mc1', CKEY='mccfg', API='https://api.github.com/gists/';
 var DEF_GIST='38d1ca0797bbf0eca2ea9cd981786b60'; /* Gist de CocoSalud */
 var DEF_MEDS=[
@@ -1010,25 +1023,49 @@ function renderCharts(){
   }
 }
 
-/* Alimentos prohibidos: calendario por semana (la más reciente arriba); en rojo los días que ya pasan el límite */
-var WD=['L','M','M','J','V','S','D'];
+/* Alimentos prohibidos: calendario de las semanas del mes en curso, con la glucosa promedio de cada día */
+var WD=['L','M','M','J','V','S','D'],MES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+function nTreat(k){var x=D.days[k];return x&&x.treats?Object.keys(x.treats).length:0;}
+function prevKey(k){var d=new Date(k+'T12:00:00');d.setDate(d.getDate()-1);return dkey(d);}
 function renderTreatCal(){
-  var rk=rangeKeys(),t=today(),box=$('treatCal');box.innerHTML='';
-  function nTreat(k){var x=D.days[k];return x&&x.treats?Object.keys(x.treats).length:0;}
-  var weeks=[],w=weekKeys(rk[0])[0];while(w<=t){weeks.unshift(weekKeys(w));var d=new Date(w+'T12:00:00');d.setDate(d.getDate()+7);w=dkey(d);}
+  var t=today(),m1=t.slice(0,8)+'01',mes=MES[+t.slice(5,7)-1],box=$('treatCal');box.innerHTML='';
+  var weeks=[],w=weekKeys(m1)[0];while(w<=t){weeks.unshift(weekKeys(w));var d=new Date(w+'T12:00:00');d.setDate(d.getDate()+7);w=dkey(d);}
   var tsum=0;
   weeks.forEach(function(wk){var acc=0,tot=wk.reduce(function(a,k){return a+nTreat(k);},0),row=el('div','mrow tweek'),mh=el('div','mh'),days=el('div','tdays');
-    wk.forEach(function(k,i){var n=nTreat(k),x=D.days[k],c=el('div','tday'),b=document.createElement('b');acc+=n;
-      if(k<rk[0]||k>t)c.className+=' na';else tsum+=n;
+    wk.forEach(function(k,i){var n=nTreat(k),x=D.days[k],c=el('div','tday'),b=document.createElement('b'),gl=x&&x.gl||[];acc+=n;
+      if(k<m1||k>t)c.className+=' na';else tsum+=n;
       if(n)c.className+=acc>TREAT_MAX?' over':' on';if(k===t)c.className+=' today';
       b.textContent=n?TREATS.filter(function(o){return x.treats[o.id];}).map(function(o){return o.i;}).join(''):'–';
-      c.title=fShort(k)+(n?': '+treatNames(x).join(', '):': ninguno');
-      c.appendChild(el('span','',WD[i]+' '+(+k.slice(8))));c.appendChild(b);days.appendChild(c);});
+      var g=el('span','tg');if(gl.length){g.textContent=Math.round(gl.reduce(function(a,r){return a+r.v;},0)/gl.length);if(!gl.every(glOk))g.className+=' out';}
+      c.title=fShort(k)+(n?': '+treatNames(x).join(', '):': ninguno')+(gl.length?'. Glucosa: '+gl.map(function(r){return r.v;}).join(', ')+' mg/dL':'');
+      c.appendChild(el('span','',WD[i]+' '+(+k.slice(8))));c.appendChild(b);c.appendChild(g);days.appendChild(c);});
     var p=el('span','pct'+(tot>TREAT_MAX?' out':''),tot+' de '+TREAT_MAX);
     p.appendChild(el('small','',tot>TREAT_MAX?'Te pasaste por '+(tot-TREAT_MAX):tot===TREAT_MAX?'Llegaste al límite':wk[6]<t?'Bien, no pasaste el límite':'Te '+(TREAT_MAX-tot===1?'queda ':'quedan ')+(TREAT_MAX-tot)));
     mh.appendChild(el('span','ml',wk[0]<=t&&t<=wk[6]?'Esta semana':'Semana del '+fNice(wk[0])));mh.appendChild(p);
     row.appendChild(mh);row.appendChild(days);box.appendChild(row);});
-  $('treatHint').textContent=(tsum?'Comiste '+tsum+(tsum===1?' alimento prohibido':' alimentos prohibidos')+' en '+rlabel()+'. ':'No comiste alimentos prohibidos en '+rlabel()+'. ¡Muy bien! ')+'Límite: '+TREAT_MAX+' por semana. En rojo, los días en que ya te habías pasado.';
+  $('treatHint').textContent=(tsum?'En '+mes+' comiste '+tsum+(tsum===1?' alimento prohibido':' alimentos prohibidos')+'. ':'En '+mes+' no has comido alimentos prohibidos. ¡Muy bien! ')+'Límite: '+TREAT_MAX+' por semana. En rojo, los días en que ya te habías pasado. El número de abajo es tu glucosa promedio de ese día (en rojo si alguna medición salió fuera de rango).';
+  renderTreatGl();
+}
+/* Compara la glucosa de los últimos 90 días: mediciones del día en que comiste un prohibido o del día siguiente, contra el resto */
+function renderTreatGl(){
+  var box=$('treatGl'),t=today(),d0=new Date(t+'T12:00:00');d0.setDate(d0.getDate()-89);var from=dkey(d0),A=[],B=[];
+  Object.keys(D.days).forEach(function(k){if(k<from||k>t)return;var gl=D.days[k].gl;if(!gl||!gl.length)return;
+    var g=nTreat(k)||nTreat(prevKey(k))?A:B;gl.forEach(function(r){g.push(r);});});
+  function avg(a){return Math.round(a.reduce(function(s,r){return s+r.v;},0)/a.length);}
+  function pin(a){return Math.round(a.filter(glOk).length*100/a.length);}
+  box.className='treatgl';box.innerHTML='';
+  var title=el('div','tv'),note=el('p','hint');box.appendChild(title);
+  if(A.length<2||B.length<2){title.textContent='¿Te suben la glucosa?';
+    note.textContent='Todavía no hay suficientes datos para comparar. Se necesitan al menos 2 mediciones de glucosa en días con alimentos prohibidos (o el día siguiente) y 2 en días sin ellos.';box.appendChild(note);return;}
+  var a=avg(A),b=avg(B),df=a-b,pa=pin(A),pb=pin(B),dp=pb-pa,lvl=df>=15||dp>=20?'bad':df>=5||dp>=10?'warn':'good';
+  box.className+=' '+lvl;
+  title.textContent={bad:'⚠️ Sí parecen subirte la glucosa',warn:'Parecen subirte un poco la glucosa',good:'✓ No se ve que te suban la glucosa'}[lvl];
+  var cmp=el('div','tcmp');
+  [['Con prohibidos',a,pa,A.length],['Sin prohibidos',b,pb,B.length]].forEach(function(r){var c=el('div');c.appendChild(el('span','',r[0]));
+    var v=el('b','',r[1]+' mg/dL');c.appendChild(v);c.appendChild(el('span','',r[2]+'% en rango · '+r[3]+(r[3]===1?' medición':' mediciones')));cmp.appendChild(c);});
+  box.appendChild(cmp);
+  note.textContent=(df>0?'Tu glucosa promedio es '+df+' mg/dL más alta':df<0?'Tu glucosa promedio es '+(-df)+' mg/dL más baja':'Tu glucosa promedio es igual')+' el día en que comes un alimento prohibido y el día siguiente. Compara los últimos 3 meses; es solo una guía, coméntalo con tu médico.';
+  box.appendChild(note);
 }
 
 function renderMeds(){
