@@ -381,8 +381,11 @@ details.notes p{margin:6px 0;font-size:.9rem}
     </section>
 
     <section class="card">
-      <h2 style="margin-bottom:12px">Actividad</h2>
+      <h2 style="margin-bottom:12px">Actividad y sueño</h2>
+      <div class="meds">
       <button class="med" id="stepsBtn" aria-pressed="false"><span class="tick"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span class="mtxt"><span class="mname">Caminé 10,000 pasos</span><span class="mwhen" id="stepsTxt"></span></span></button>
+      <button class="med" id="sleepBtn" aria-pressed="false"><span class="tick"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span class="mtxt"><span class="mname">Dormí 8 horas</span><span class="mwhen" id="sleepTxt"></span></span></button>
+      </div>
     </section>
 
     <section class="card">
@@ -655,7 +658,7 @@ function nTaken(x,id){return x&&x.md&&x.md[id]?Object.keys(x.md[id]).length:0;}
 function hasMd(x){return !!(x.md&&Object.keys(x.md).length);}
 function hasFood(x){return !!(x.food&&Object.keys(x.food).length);}
 function hasTreats(x){return !!(x.treats&&Object.keys(x.treats).length);}
-function cleanDay(k){var x=D.days[k];if(x&&x.peso==null&&!hasMd(x)&&!x.pasos&&!hasFood(x)&&!hasTreats(x)&&!x.agua&&(!x.gl||!x.gl.length))delete D.days[k];}
+function cleanDay(k){var x=D.days[k];if(x&&x.peso==null&&!hasMd(x)&&!x.pasos&&!x.sueno&&!hasFood(x)&&!hasTreats(x)&&!x.agua&&(!x.gl||!x.gl.length))delete D.days[k];}
 function mcol(i){return 'var(--m'+(i%4+1)+')';}
 function mlabel(m){return nice(m.name)+(m.dose?' '+m.dose:'');}
 function nice(n){return n.replace(/\//g,'/\u200b');}
@@ -822,6 +825,8 @@ function summaryRows(){
   rows.push(['Agua','<b>'+(n?fmtL(Math.round(wsum/n/50)*50):'–')+'</b> al día en promedio','Meta cumplida '+wok+' de '+n+' días ('+fmtL(D.cfg.agua)+')']);
   var st=act.filter(function(k){return D.days[k]&&D.days[k].pasos;}).length;
   rows.push(['10,000 pasos','<b>'+st+' de '+n+'</b> días',pct(st,n)+' de los días']);
+  var sl=act.filter(function(k){return D.days[k]&&D.days[k].sueno;}).length;
+  rows.push(['Dormir 8 horas','<b>'+sl+' de '+n+'</b> días',pct(sl,n)+' de los días']);
   var ft=0,fd=0;act.forEach(function(k){var t=foodTotals(D.days[k]);ft+=t.tot;fd+=t.dn;});
   rows.push(['Plan de alimentación','<b>'+pct(fd,ft)+'</b> de las porciones',fd+' de '+ft+' porciones']);
   var gs=[];act.forEach(function(k){(D.days[k]&&D.days[k].gl||[]).forEach(function(r){gs.push(r);});});
@@ -863,6 +868,7 @@ function buildPlanEditor(){var P=D.cfg.plan,h='<table><thead><tr><th>Grupo</th>'
 function readPlanEditor(){var P=D.cfg.plan;document.querySelectorAll('#planEd input').forEach(function(i){var v=parseInt(i.value,10);P[i.dataset.g][+i.dataset.m]=(v>=0&&v<=9)?v:0;});}
 
 function toggleSteps(){var x=day(sel);if(x.pasos)delete x.pasos;else x.pasos=sel===today()?nowHM():true;cleanDay(sel);persist();if(x.pasos)toast('¡Bien! 10,000 pasos registrados');}
+function toggleSleep(){var x=day(sel);if(x.sueno)delete x.sueno;else x.sueno=true;cleanDay(sel);persist();if(x.sueno)toast('¡Bien! 8 horas de sueño registradas');}
 function savePeso(){var v=num($('peso').value);if(!(v>=20&&v<=400)){toast('Revisa el peso: debe estar entre 20 y 400 kg');return;}day(sel).peso=Math.round(v*10)/10;editPeso=false;persist();toast('Peso guardado');}
 function saveGluc(){var v=num($('gluc').value);if(!(v>=20&&v<=600)){toast('Revisa la glucosa: debe estar entre 20 y 600');return;}
   var t=$('glucT').value||nowHM(),x=day(sel);x.gl.push({t:t,v:Math.round(v),m:glM});x.gl.sort(function(a,b){return a.t<b.t?-1:1;});
@@ -956,6 +962,8 @@ function render(){
   $('allsetTxt').textContent=sel===t?'Listo, ya tomaste todo lo de hoy.':'Ese día tomaste todo.';
   var sp=x.pasos;$('stepsBtn').setAttribute('aria-pressed',sp?'true':'false');
   $('stepsTxt').textContent=sp?('Listo'+(sp===true?'':', registrado a las '+sp)):'Toca cuando los completes';
+  $('sleepBtn').setAttribute('aria-pressed',x.sueno?'true':'false');
+  $('sleepTxt').textContent=x.sueno?'Listo, descansaste bien':'Toca si dormiste 8 horas o más';
   renderEntry(x);renderWater(x);renderFood(x);renderTreats(x);renderStats();renderTodayStats();renderLabStats();
   if(!$('tab-prog').hidden){renderCharts();renderMeds();}if(!$('tab-est').hidden)renderLabs();if($('repDlg').open)renderReport();
 }
@@ -1102,6 +1110,12 @@ function renderMeds(){
   var p4=el('span','pct',wd?Math.round(wok*100/wd)+'%':'–');p4.appendChild(el('small','',wd?'Promedio '+fmtMl(Math.round(wsum/wd/50)*50)+' al día':''));
   mh4.appendChild(el('span','ml','Agua'));mh4.appendChild(p4);row4.appendChild(mh4);row4.appendChild(dots4);box.appendChild(row4);
   mh2.appendChild(el('span','ml','10,000 pasos'));mh2.appendChild(p2);row2.appendChild(mh2);row2.appendChild(dots2);box.appendChild(row2);
+  var row5=el('div','mrow');row5.style.setProperty('--c','var(--gluc)');var mh5=el('div','mh'),dots5=el('div','dots'),sd=0,son=0;
+  rk.forEach(function(k){var d=el('span','dot'),x=D.days[k],ok=!!(x&&x.sueno);
+    if(k<first)d.className+=' na';else{sd++;if(ok){son++;d.className+=' on';}}if(k===t)d.className+=' today';
+    d.title=fShort(k)+(ok?': durmió 8 horas':'');dots5.appendChild(d);});
+  var p5=el('span','pct',sd?Math.round(son*100/sd)+'%':'–');p5.appendChild(el('small','',son+' de '+sd+' días'));
+  mh5.appendChild(el('span','ml','Dormir 8 horas'));mh5.appendChild(p5);row5.appendChild(mh5);row5.appendChild(dots5);box.appendChild(row5);
 }
 
 function fDate(k){return new Date(k+'T12:00:00').toLocaleDateString('es-MX',{day:'numeric',month:'short',year:'numeric'});}
@@ -1142,6 +1156,8 @@ function renderTodayStats(){
   card(n>TREAT_MAX?'var(--bad)':'var(--m3)','Prohibidos',String(n),'de '+TREAT_MAX,n>TREAT_MAX?'Te pasaste por '+(n-TREAT_MAX)+' esta semana':n===TREAT_MAX?'Llegaste al límite de la semana':'Esta semana. Te quedan '+(TREAT_MAX-n),n>=TREAT_MAX?'out':'','ali');
   var st=!!x.pasos;
   card(st?'var(--ok)':'var(--peso)','10,000 pasos',st?'✓':'–',st?'logrado':'pendiente',st?'Ya los marcaste hoy':'Todavía no los marcas',st?'ok':'','salud');
+  var sl=!!x.sueno;
+  card(sl?'var(--ok)':'var(--gluc)','Sueño 8 h',sl?'✓':'–',sl?'logrado':'pendiente',sl?'Ya lo marcaste hoy':'Todavía no lo marcas',sl?'ok':'','salud');
 }
 function renderLabStats(){
   var box=$('labStats');box.innerHTML='';
@@ -1265,7 +1281,7 @@ var tt;function toast(m){var t=$('toast');t.textContent=m;t.classList.add('show'
 
 /* ===== Eventos ===== */
 $('addMed').onclick=function(){var r=medRow({});$('medEd').appendChild(r);r.querySelector('.mN').focus();};
-$('stepsBtn').onclick=toggleSteps;
+$('stepsBtn').onclick=toggleSteps;$('sleepBtn').onclick=toggleSleep;
 $('fdClose').onclick=function(){$('foodDlg').close();};
 $('fSearch').addEventListener('input',renderSheet);
 $('cAdd').onclick=addCustom;
